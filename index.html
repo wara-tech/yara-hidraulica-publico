@@ -1,0 +1,1030 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Yara: hidráulica e processo de tratamento · Wara Tech</title>
+<style>
+@font-face{font-family:"InterDoc";src:url("assets/font/inter.woff") format("woff");font-weight:100 900;font-style:normal;font-display:swap}
+:root{
+  --bg:#fbfbfa; --paper:#ffffff; --ink:#0f1215; --ink2:#3a4148; --muted:#6b737c; --faint:#9aa1a9;
+  --line:#e8e9eb; --soft:#f3f4f5; --accent:#0d6e7a; --accent-soft:#eaf4f5; --accent-ink:#0a5560;
+  --ok:#2f7d4f; --ok-soft:#eaf5ee; --warn:#9a6a00; --warn-soft:#fbf3df; --bad:#b4372f; --bad-soft:#fbecea;
+  --div:#6b4fa3; --div-soft:#f1edf8;
+  --sans:"InterDoc","Inter",ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --mono:ui-monospace,"SF Mono","JetBrains Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:16.5px;line-height:1.65;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;font-feature-settings:"cv11","ss01"}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline;text-underline-offset:3px}
+b,strong{font-weight:600;color:var(--ink)}
+.wrap{max-width:1200px;margin:0 auto;padding:0 40px}
+.num{font-variant-numeric:tabular-nums}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:rgba(251,251,250,.86);backdrop-filter:saturate(180%) blur(14px);-webkit-backdrop-filter:saturate(180%) blur(14px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:28px;height:60px}
+.brand{font-weight:600;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;font-size:15px}
+.brand span{color:var(--muted);font-weight:400;margin-left:6px}
+.top nav{display:flex;gap:4px;margin-left:auto;overflow-x:auto;scrollbar-width:none}
+.top nav::-webkit-scrollbar{display:none}
+.top nav a{color:var(--muted);font-size:13.5px;white-space:nowrap;padding:6px 10px;border-radius:8px}
+.top nav a i{font-style:normal;font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-right:6px}
+.top nav a:hover{color:var(--ink);text-decoration:none;background:var(--soft)}
+.top nav a.on{color:var(--accent-ink);background:var(--accent-soft)}
+.top nav a.on i{color:var(--accent)}
+
+/* hero */
+.hero{padding:112px 0 72px}
+.eyebrow{font-size:12.5px;font-weight:500;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);margin:0 0 18px}
+.hero h1{font-size:clamp(40px,6.2vw,76px);line-height:1.03;letter-spacing:-.04em;font-weight:600;margin:0 0 26px;max-width:17ch}
+.hero .lede{font-size:clamp(18px,2vw,21px);line-height:1.55;color:var(--ink2);max-width:54ch;margin:0}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);margin-top:64px;border-top:1px solid var(--line)}
+.facts div{padding:22px 24px 0 0}
+.facts b{display:block;font-weight:500;font-size:15px;color:var(--ink);letter-spacing:-.01em}
+.facts span{font-size:13.5px;color:var(--muted)}
+
+/* reading guide */
+.guide{margin-top:56px;display:grid;grid-template-columns:1.1fr 1fr;gap:20px}
+.guide .box{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:22px 24px}
+.guide h3{font-size:14px;margin:0 0 12px;letter-spacing:0}
+.guide ol{margin:0;padding:0;list-style:none;display:grid;grid-template-columns:1fr 1fr;gap:6px 18px;counter-reset:g}
+.guide ol li{font-size:14px;color:var(--ink2);display:grid;grid-template-columns:26px 1fr}
+.guide ol li::before{counter-increment:g;content:"0" counter(g);font-family:var(--mono);font-size:12px;color:var(--faint);padding-top:2px}
+.legend{display:grid;grid-template-columns:auto 1fr;gap:9px 12px;align-items:center;font-size:13.5px;color:var(--ink2)}
+
+/* tags */
+.tag{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;font-weight:500;letter-spacing:.02em;padding:2px 8px;border-radius:999px;white-space:nowrap;line-height:1.5;vertical-align:1px}
+.tag::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;opacity:.8}
+.t-med{color:var(--ok);background:var(--ok-soft)}
+.t-apx{color:var(--warn);background:var(--warn-soft)}
+.t-rel{color:#55606b;background:var(--soft)}
+.t-fab{color:var(--accent-ink);background:var(--accent-soft)}
+.t-div{color:var(--div);background:var(--div-soft)}
+.t-nd{color:var(--bad);background:var(--bad-soft)}
+a.dref{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--div);background:var(--div-soft);padding:1px 7px;border-radius:6px;white-space:nowrap}
+a.dref:hover{text-decoration:none;filter:brightness(.95)}
+
+/* sections */
+section{border-top:1px solid var(--line);padding:92px 0;scroll-margin-top:60px}
+.sec{display:grid;grid-template-columns:240px minmax(0,1fr);gap:56px}
+.sec-head{position:sticky;top:96px;align-self:start}
+.sec-head .eyebrow{margin-bottom:12px}
+.sec-head .eyebrow b{font-family:var(--mono);font-weight:500;color:var(--accent);margin-right:8px}
+.sec-head p.q{font-size:14px;color:var(--muted);margin:14px 0 0;max-width:24ch;line-height:1.5}
+h2{font-size:30px;line-height:1.15;letter-spacing:-.025em;font-weight:600;margin:0}
+h3{font-size:17px;line-height:1.4;letter-spacing:-.01em;font-weight:600;margin:0 0 6px}
+.body > p, .lead{max-width:70ch;color:var(--ink2);margin:0 0 20px}
+.lead{font-size:18px;line-height:1.6;color:var(--ink)}
+.body > * + h3.sub{margin-top:56px}
+h3.sub{font-size:13px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin:0 0 16px}
+.src{display:flex;align-items:flex-start;gap:8px;font-size:13px;color:var(--muted);margin:14px 0 0;max-width:80ch;line-height:1.5}
+.src::before{content:"";flex:0 0 6px;width:6px;height:6px;margin-top:6px;border-radius:50%;background:var(--accent);opacity:.7}
+
+/* quote */
+.quote{margin:0 0 36px;padding:30px 34px;background:var(--paper);border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:4px 14px 14px 4px}
+.quote p{margin:0;font-size:clamp(19px,2.1vw,23px);line-height:1.5;letter-spacing:-.012em;color:var(--ink);max-width:52ch}
+.quote cite{display:block;margin-top:16px;font-style:normal;font-size:13.5px;color:var(--muted)}
+
+/* spec list */
+.spec{margin:0;border-top:1px solid var(--line)}
+.spec div{display:grid;grid-template-columns:200px 1fr;gap:24px;padding:15px 0;border-bottom:1px solid var(--line)}
+.spec dt{color:var(--muted);font-size:14.5px}
+.spec dd{margin:0;color:var(--ink)}
+.spec dd small{display:block;color:var(--muted);font-size:13.5px;margin-top:2px}
+
+/* tables */
+.tw{overflow-x:auto;margin:0;-webkit-overflow-scrolling:touch}
+table{width:100%;border-collapse:collapse;font-size:14.5px}
+th{font-size:11.5px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:0 14px 12px 0;border-bottom:1px solid var(--line);vertical-align:bottom}
+td{padding:12px 14px 12px 0;border-bottom:1px solid var(--line);color:var(--ink2);vertical-align:top}
+td:first-child{color:var(--ink);font-weight:500}
+tr.grp td{padding-top:30px;font-size:11.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);border-bottom:1px solid var(--line)}
+td.id{font-family:var(--mono);font-size:12.5px;color:var(--div);font-weight:600;width:44px;white-space:nowrap}
+table.meta td{font-variant-numeric:tabular-nums}
+table.meta th.c-i,table.meta td.c-i{background:linear-gradient(var(--ok-soft),var(--ok-soft));}
+table.meta th.c-a,table.meta td.c-a{background:linear-gradient(var(--warn-soft),var(--warn-soft));}
+table.meta th.c-e,table.meta td.c-e{background:linear-gradient(var(--bad-soft),var(--bad-soft));}
+table.meta th.c-i,table.meta th.c-a,table.meta th.c-e{padding:10px 12px;border-radius:8px 8px 0 0}
+table.meta td.c-i,table.meta td.c-a,table.meta td.c-e{padding:12px;color:var(--ink)}
+table.meta th.c-i{color:var(--ok)} table.meta th.c-a{color:var(--warn)} table.meta th.c-e{color:var(--bad)}
+table.meta td.r{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+table.cmp{font-size:13.5px;min-width:760px}
+table.cmp td:first-child{width:150px}
+table.cmp td{padding-right:12px}
+table.cmp th{padding-right:12px}
+table.cmp td:first-child{width:170px}
+.v{display:block;color:var(--ink);font-variant-numeric:tabular-nums}
+.v small{color:var(--muted);font-size:12.5px}
+.pill{display:inline-block;font-size:11px;font-weight:600;letter-spacing:.04em;padding:1px 7px;border-radius:5px;margin-top:3px}
+.p-ok{color:var(--ok);background:var(--ok-soft)}
+.p-bad{color:var(--bad);background:var(--bad-soft)}
+.p-nm{color:#7a828b;background:var(--soft);font-weight:500}
+table.comp td:first-child{width:180px}
+table.comp td:last-child{width:120px}
+table.valv td.n{font-family:var(--mono);color:var(--accent);font-weight:600;width:70px}
+table.valv td.g{color:var(--muted);font-size:13.5px;width:150px}
+table.prob td:first-child{width:36px;font-family:var(--mono);font-size:12.5px;color:var(--faint);font-weight:500}
+table.prob td:nth-child(2){color:var(--ink);font-weight:500;width:200px}
+table.prob td:last-child{width:150px}
+table.div{table-layout:fixed}
+table.div th:nth-child(1){width:48px}table.div th:nth-child(2){width:150px}table.div th:nth-child(5){width:170px}
+table.div td:first-child{font-family:var(--mono);font-size:12.5px;color:var(--div);font-weight:600;width:48px;white-space:nowrap}
+table.div td:nth-child(2){color:var(--ink);font-weight:500;width:160px}
+table.div td:last-child{width:190px;color:var(--muted)}
+table.div tr:target td{background:var(--div-soft)}
+table.div tr{scroll-margin-top:90px}
+table.miss td:last-child{width:210px;color:var(--muted)}
+
+/* figure */
+.fig{margin:4px 0 0;background:var(--paper);border:1px solid var(--line);border-radius:16px;padding:30px 26px 24px;overflow-x:auto}
+.fig svg{display:block;width:100%;height:auto;min-width:780px}
+.fig.pid{padding:18px 14px}
+.fig.pid img{display:block;width:100%;height:auto;min-width:860px}
+.fig.pid a{display:block}
+@media (min-width:1061px){.fig.pid{margin-left:-296px;position:relative;z-index:2}}
+.fig-h{display:flex;align-items:baseline;justify-content:space-between;gap:16px;margin:0 0 14px}
+.fig-h h3{margin:0}
+.swipe{display:none;font-size:12.5px;color:var(--faint);margin:0 0 8px}
+.figcap{font-size:13.5px;color:var(--muted);max-width:80ch;margin:12px 0 0;line-height:1.55}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:22px 24px}
+.card h3{margin-bottom:12px}
+.card .spec div{grid-template-columns:110px 1fr;gap:14px;padding:11px 0;font-size:14.5px}
+.card .spec dt{font-size:13.5px}
+
+/* timeline */
+.phase{display:flex;align-items:center;gap:12px;margin:0 0 6px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.phase::after{content:"";flex:1;height:1px;background:var(--line)}
+.phase.hot{color:var(--accent)}
+.body > p.phase{max-width:none;margin-bottom:6px}
+.body > .tl + p.phase{margin-top:8px}
+.tl{list-style:none;margin:0 0 40px;padding:0;position:relative}
+.tl::before{content:"";position:absolute;left:111px;top:8px;bottom:8px;width:1px;background:var(--line)}
+.tl li{display:grid;grid-template-columns:96px 1fr;gap:32px;padding:18px 0;position:relative}
+.tl li::before{content:"";position:absolute;left:106px;top:26px;width:11px;height:11px;border-radius:50%;background:var(--bg);border:2px solid #c3c9cf}
+.tl .d{font-family:var(--mono);font-size:13px;color:var(--muted);padding-top:3px;text-align:right}
+.tl .d b{display:block;font-family:var(--sans);font-size:15px;color:var(--ink);font-weight:600;letter-spacing:-.01em}
+.tl h3{font-size:16.5px;margin:0 0 8px}
+.tl dl{margin:0;display:grid;grid-template-columns:96px 1fr;gap:6px 14px;font-size:14.5px}
+.tl dt{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;padding-top:3px}
+.tl dd{margin:0;color:var(--ink2)}
+.tl.hot li::before{border-color:var(--accent);background:var(--accent)}
+.tl.hot .c{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px 22px;margin-top:-6px}
+.tl.hot .d{color:var(--accent)}
+.tl.muted li{padding:12px 0}
+.tl.muted li::before{top:20px}
+
+/* photos */
+.photos{display:grid;grid-template-columns:repeat(3,1fr);gap:26px 22px}
+.photos.four{grid-template-columns:repeat(4,1fr)}
+.photos figure{margin:0}
+.ph{position:relative;aspect-ratio:3/4;border-radius:12px;background:#eef0f2;overflow:hidden}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ph.sq{aspect-ratio:1/1}
+.ph.land{aspect-ratio:16/10}
+.ph.contain{background:#fff;border:1px solid var(--line)}
+.ph.contain img{object-fit:contain;padding:4px}
+.photos figcaption{font-size:13.5px;color:var(--ink2);margin-top:10px;line-height:1.5}
+.photos figcaption span{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.photos .wide{grid-column:span 2}
+.photos .wide .ph{aspect-ratio:16/9}
+.catalog{margin-top:30px;padding:22px 24px;border:1px dashed #cfd4d9;border-radius:14px;background:#fcfcfb}
+.catalog .photos{grid-template-columns:repeat(4,1fr);gap:18px}
+.catalog p{margin:0 0 16px;font-size:13.5px;color:var(--muted)}
+
+/* questions */
+.qgroup{margin:0 0 44px}
+.qgroup > h3{font-size:13px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--accent);margin:0 0 4px}
+.qs{list-style:none;padding:0;margin:0;border-top:1px solid var(--line)}
+.qs li{display:grid;grid-template-columns:52px 1fr;padding:22px 0;border-bottom:1px solid var(--line)}
+.qs .k{font-family:var(--mono);font-size:13px;color:var(--faint);padding-top:3px}
+.qs p.qq{margin:0 0 8px;font-size:16.5px;line-height:1.5;color:var(--ink);font-weight:500;letter-spacing:-.006em;max-width:72ch}
+.qs p.dd{margin:0;font-size:14px;color:var(--ink2);max-width:76ch}
+.qs p.dd::before{content:"Dado de apoio";display:inline-block;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);background:var(--soft);padding:1px 7px;border-radius:5px;margin-right:8px;vertical-align:1px}
+
+/* stats */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:0 0 40px}
+.stats > div{padding:24px 20px 22px 0}
+.stats > div + div{border-left:1px solid var(--line);padding-left:22px}
+.stat{font-size:36px;font-weight:600;letter-spacing:-.035em;line-height:1;color:var(--ink);font-variant-numeric:tabular-nums}
+.stat small{font-size:15px;font-weight:500;letter-spacing:-.01em;color:var(--muted);margin-left:4px}
+.stat-l{font-size:13.5px;color:var(--muted);margin-top:10px;line-height:1.45}
+.stat-l .tag{margin-top:8px}
+.stats.sm .stat{font-size:26px;white-space:nowrap}
+.lead + .qgroup{margin-top:40px}
+
+footer{border-top:1px solid var(--line);padding:56px 0 72px;color:var(--muted);font-size:13.5px}
+footer .cols{display:grid;grid-template-columns:240px minmax(0,1fr);gap:56px}
+footer h3{font-size:13px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600}
+footer table{font-size:13.5px}
+footer td{color:var(--muted)}
+footer td:first-child{color:var(--ink2)}
+footer .end{margin-top:40px}
+
+@media (max-width:1060px){
+  .sec,footer .cols{grid-template-columns:minmax(0,1fr);gap:26px}
+  .sec-head{position:static}
+  .sec-head p.q{max-width:none}
+  .facts{grid-template-columns:repeat(2,1fr)}
+  .facts div{padding-bottom:20px}
+  .guide{grid-template-columns:1fr}
+  .photos,.photos.four{grid-template-columns:repeat(2,1fr)}
+  .catalog .photos{grid-template-columns:repeat(2,1fr)}
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .stats > div:nth-child(3){border-left:0;padding-left:0}
+  .stats > div:nth-child(n+3){border-top:1px solid var(--line)}
+}
+@media (max-width:680px){
+  body{font-size:16px}
+  .wrap{padding:0 20px}
+  .top .wrap{gap:14px}
+  .brand span{display:none}
+  .top nav{-webkit-mask-image:linear-gradient(90deg,#000 85%,transparent);mask-image:linear-gradient(90deg,#000 85%,transparent)}
+  .top nav a{padding:6px 8px}
+  .hero{padding:64px 0 52px}
+  .facts{margin-top:44px}
+  .guide ol{grid-template-columns:1fr}
+  section{padding:60px 0}
+  h2{font-size:26px}
+  .quote{padding:22px 20px}
+  .spec div{grid-template-columns:1fr;gap:2px}
+  .two{grid-template-columns:1fr}
+  .stats{grid-template-columns:1fr 1fr}
+  .stat{font-size:30px}
+  .stats{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .stats.sm .stat{font-size:21px}
+  .photos,.photos.four{grid-template-columns:1fr 1fr;gap:20px 14px}
+  .photos .wide{grid-column:1/-1}
+  .photos figcaption{font-size:12.5px}
+  .fig{padding:20px 14px 14px;border-radius:14px;margin-left:-4px;margin-right:-4px}
+  .swipe{display:block}
+  .tl::before{left:7px}
+  .tl li{grid-template-columns:1fr;gap:6px;padding-left:28px}
+  .tl li::before{left:2px;top:22px}
+  .tl .d{text-align:left;display:flex;gap:10px;align-items:baseline}
+  .tl .d b{display:inline}
+  .tl dl{grid-template-columns:1fr;gap:0 0}
+  .tl dd{margin-bottom:8px}
+  .tl.hot .c{padding:16px}
+  .tl.muted li{padding:12px 0 12px 28px}
+  table.div{table-layout:auto}
+  .qs li{grid-template-columns:38px 1fr}
+  .qs p.qq{font-size:16px}
+  table.valv td.g,table.valv th.g{display:none}
+  .stack table,.stack thead,.stack tbody,.stack tr,.stack td{display:block;width:auto!important}
+  .stack thead{display:none}
+  .stack tr{padding:14px 0;border-bottom:1px solid var(--line)}
+  .stack tr.grp{padding:0}
+  .stack td{border:0;padding:3px 0}
+  .stack td:first-child{font-size:15px}
+  .stack table.div td:first-child,.stack table.prob td:first-child{font-size:12.5px}
+  .stack td[data-l]::before{content:attr(data-l);display:block;font-size:10.5px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+}
+@media print{
+  .top{position:static} .sec-head{position:static}
+  section{break-inside:auto;padding:40px 0}
+  .fig,.photos figure,.tl li,.qs li,tr{break-inside:avoid}
+  body{background:#fff}
+}
+
+</style>
+</head>
+<body>
+<header class="top">
+<div class="wrap">
+<a class="brand" href="#topo">Yara<span>hidráulica e processo</span></a>
+<nav aria-label="Seções">
+<a href="#objetivo"><i>01</i>Objetivo</a>
+<a href="#meta"><i>02</i>Meta</a>
+<a href="#agua"><i>03</i>Água de Tangará</a>
+<a href="#yara"><i>04</i>Yara hoje</a>
+<a href="#campo"><i>05</i>Campo</a>
+<a href="#divergencias"><i>06</i>Divergências</a>
+<a href="#perguntas"><i>07</i>Perguntas</a>
+</nav>
+</div>
+</header>
+<main id="topo">
+<div class="hero">
+<div class="wrap">
+<p class="eyebrow">Wara Tech · Documento técnico para consultoria · 12/10/2026</p>
+<h1>Yara: hidráulica e processo de tratamento</h1>
+<p class="lede">Material para Gabriel Poydo. Mostra a meta de água para o gado, a água que vamos encontrar no piloto de Tangará da Serra (MT), a máquina como está hoje, o que aconteceu no campo e o que precisamos decidir com a sua ajuda.</p>
+<div class="facts">
+<div><b>Água perfeita para o gado</b><span>objetivo do trem de tratamento</span></div>
+<div><b>Qualquer rota</b><span>com ou sem membrana, mesmo manual</span></div>
+<div><b>2 linhas em paralelo</b><span>pré-filtro + UF, direto ao bebedouro</span></div>
+<div><b>56 + 56 animais</b><span>tratados e controle, a confirmar</span></div>
+</div>
+<div class="guide">
+<div class="box">
+<h3>O caminho deste documento</h3>
+<ol>
+<li><a href="#objetivo">Objetivo</a></li>
+<li><a href="#meta">Meta: água ideal para o gado</a></li>
+<li><a href="#agua">A água de Tangará frente à meta</a></li>
+<li><a href="#yara">A Yara como existe hoje</a></li>
+<li><a href="#campo">O que aconteceu no campo</a></li>
+<li><a href="#divergencias">Divergências em aberto</a></li>
+<li><a href="#perguntas">O que pedimos a você</a></li>
+</ol>
+</div>
+<div class="box">
+<h3>Como ler os dados</h3>
+<div class="legend">
+<span class="tag t-med">Medido</span><span>Valor medido, com laudo ou método registrado.</span>
+<span class="tag t-apx">Aproximado</span><span>Valor com “~” na fonte, sem método registrado.</span>
+<span class="tag t-rel">Relato</span><span>Observação visual ou registro da equipe em campo.</span>
+<span class="tag t-fab">Fabricante</span><span>Etiqueta, catálogo ou nota fiscal; não medido na máquina.</span>
+<span class="tag t-nd">Desconhecido</span><span>Dado que nenhuma fonte tem.</span>
+<span class="tag t-div">Divergência</span><span>Fontes dizem coisas diferentes (D1 a D23). Mostramos as versões, sem escolher.</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- 01 OBJETIVO -->
+<section id="objetivo">
+<div class="wrap sec">
+<div class="sec-head"><p class="eyebrow"><b>01</b>Objetivo</p><h2>O que queremos</h2><p class="q">Por que este documento existe e o que o trem de tratamento precisa entregar.</p></div>
+<div class="body">
+<blockquote class="quote">
+<p>“A solução não precisa ser de membrana; pode ser qualquer rota de tratamento. Buscamos um trem que deixe a água que vamos encontrar no piloto em Tangará da Serra (MT) perfeita para o consumo do gado, ainda que, por ora, seja uma solução manual, com alguém fazendo dosagem e controle. O ponto é garantir que a qualidade da água não seja um fator na análise de ganho de peso do gado.”</p>
+<cite>Rodrigo Belli, Wara Tech</cite>
+</blockquote>
+<h3 class="sub">Requisitos registrados</h3>
+<dl class="spec">
+<div><dt>Meta de qualidade</dt><dd>Água ideal para o gado, pelas duas réguas do PDF da Wara Tech. <a href="#meta">Seção 02</a></dd></div>
+<div><dt>Água a tratar</dt><dd>A da fazenda do piloto, em Tangará da Serra (MT). <a href="#agua">Seção 03</a></dd></div>
+<div><dt>Rota de tratamento</dt><dd>Livre: com ou sem membrana. Por ora, pode ser manual, com alguém dosando e controlando.</dd></div>
+<div><dt>Demanda</dt><dd>~2.000 a 3.000 L/dia, concentrados em ~2 h. Meta de até 3.000 L/h direto no bebedouro, sem tanque-pulmão, acionado pelo nível do bebedouro (boia ou similar).</dd></div>
+<div><dt>Pressão de entrada</dt><dd>O projeto assume entrada zero: a bomba gera toda a pressão. Em campo, varia de nenhuma pressão até entrada já pressurizada (coluna d'água ou rede da fazenda), conforme o local.</dd></div>
+<div><dt>Ambiente</dt><dd>Ao ar livre, em clima quente.</dd></div>
+<div><dt>Vida útil</dt><dd>Troca de peças e elementos filtrantes no máximo a cada 2 a 3 anos.</dd></div>
+<div><dt>Tamanho do piloto</dt><dd>A princípio, 56 animais tratados e 56 de controle, a confirmar pela fazenda do piloto. <a class="dref" href="#d20">D20</a></dd></div>
+<div><dt>Prazo</dt><dd>Fechar o trem e instalar uma unidade em campo em ~4 a 8 semanas. Em 07/10/2026, o início do piloto passou para dezembro.</dd></div>
+</dl>
+<p class="src">Fontes: Google Doc “Yara: dúvidas de filtragem (v2)”, 12/10/2026; esclarecimento do Rodrigo sobre o tamanho do piloto, 12/10/2026; call de 07/10/2026.</p>
+</div>
+</div>
+</section>
+<!-- 02 META -->
+<section id="meta">
+<div class="wrap sec">
+<div class="sec-head"><p class="eyebrow"><b>02</b>Meta</p><h2>Água ideal para o gado</h2><p class="q">A régua que o trem precisa atingir, copiada do PDF da Wara Tech.</p></div>
+<div class="body">
+<p class="lead">“Nenhuma régua sozinha aprova a água do boi. A NRC olha o que está dissolvido: desempenho (GMD) e toxicidade. A potabilidade olha o que está vivo: patógenos. Água ideal = passar nas duas e ainda estar fresca, limpa e à vontade.”</p>
+<div class="tw">
+<table class="meta">
+<thead><tr><th>Parâmetro</th><th class="c-i">Ideal</th><th class="c-a">Aceitável</th><th class="c-e">Evitar</th><th>Régua</th></tr></thead>
+<tbody>
+<tr><td>TDS / salinidade</td><td class="c-i">&lt; 1.000 ppm</td><td class="c-a">1.000 – 3.000</td><td class="c-e">&gt; 3.000</td><td class="r">NRC</td></tr>
+<tr><td>Sulfato (SO₄)</td><td class="c-i">&lt; 500 ppm</td><td class="c-a">500 – 1.000</td><td class="c-e">&gt; 1.500 · risco PEM</td><td class="r">NRC</td></tr>
+<tr><td>Nitrato (NO₃-N)</td><td class="c-i">&lt; 10 ppm</td><td class="c-a">10 – 20</td><td class="c-e">&gt; 40</td><td class="r">NRC</td></tr>
+<tr><td>pH</td><td class="c-i">6,5 – 8,0</td><td class="c-a">6,0 – 8,5</td><td class="c-e">&lt; 5,5 ou &gt; 9</td><td class="r">NRC</td></tr>
+<tr><td>Metais tóxicos</td><td class="c-i">As &lt;0,2 · Pb &lt;0,1 · F &lt;2,0</td><td class="c-a">—</td><td class="c-e">acima dos limites</td><td class="r">NRC</td></tr>
+<tr><td>E. coli</td><td class="c-i">Ausência</td><td class="c-a">—</td><td class="c-e">qualquer presença</td><td class="r">888</td></tr>
+<tr><td>Coliformes totais</td><td class="c-i">Ausência</td><td class="c-a">—</td><td class="c-e">qualquer presença</td><td class="r">888</td></tr>
+<tr><td>Físico / manejo</td><td class="c-i">Fresca, limpa, ad libitum</td><td class="c-a">—</td><td class="c-e">quente, suja, acesso restrito</td><td class="r">Prát.</td></tr>
+</tbody>
+</table>
+</div>
+<p class="figcap">Valores de referência para bovinos de corte. Ideal · Aceitável (monitorar) · Evitar: corrige consumo, GMD ou saúde. Texto e valores como estão no PDF.</p>
+<h3 class="sub">As duas réguas</h3>
+<div class="two">
+<div class="card">
+<p class="eyebrow" style="margin-bottom:6px">Régua 1</p>
+<h3>Química &amp; nutricional · NRC / NASEM</h3>
+<dl class="spec">
+<div><dt>Mandato</dt><dd>O que está dissolvido na água e como afeta consumo, ganho de peso (GMD) e saúde metabólica.</dd></div>
+<div><dt>Mede</dt><dd>TDS/salinidade · sulfato · nitrato · pH · metais tóxicos · toxinas de alga</dd></div>
+<div><dt>Não cobre</dt><dd>Bactéria · vírus · turbidez</dd></div>
+<div><dt>Origem</dt><dd>NRC, “Nutrients and Toxic Substances in Water for Livestock and Poultry” (1974); NASEM, Nutrient Requirements of Beef Cattle (2016).</dd></div>
+</dl>
+</div>
+<div class="card">
+<p class="eyebrow" style="margin-bottom:6px">Régua 2</p>
+<h3>Sanitária &amp; microbiológica · Portaria 888/2021 + EPA / WHO</h3>
+<dl class="spec">
+<div><dt>Mandato</dt><dd>Segurança sanitária: ausência de patógenos na água destinada ao consumo animal.</dd></div>
+<div><dt>Mede</dt><dd>E. coli · coliformes totais · carga microbiana · turbidez (indicador)</dd></div>
+<div><dt>Complementa</dt><dd>Preenche exatamente o vão que a NRC deixa em aberto.</dd></div>
+<div><dt>Origem</dt><dd>Portaria GM/MS 888/2021 (potabilidade, Brasil); recomendações EPA / WHO para água de dessedentação.</dd></div>
+</dl>
+</div>
+</div>
+<p class="src">Fonte: “A água ideal para o gado”, Wara Tech, referência técnica, jun/2026. Fontes citadas no PDF: NRC (1974) · NASEM (2016) · Portaria GM/MS 888/2021 · EPA / WHO · OSU &amp; NDSU Extension. Síntese do PDF: “Química aprovada ≠ água potável. Só as duas réguas juntas definem a água ideal para o gado.” Lacunas do próprio PDF: <a class="dref" href="#d18">D18</a> <a class="dref" href="#d19">D19</a></p>
+</div>
+</div>
+</section>
+<!-- 03 ÁGUA DE TANGARÁ -->
+<section id="agua">
+<div class="wrap sec">
+<div class="sec-head"><p class="eyebrow"><b>03</b>Água de Tangará</p><h2>A água de Tangará frente à meta</h2><p class="q">O que já foi medido na fazenda do piloto, ponto a ponto, e o que ainda falta medir.</p></div>
+<div class="body">
+<div class="stats">
+<div><div class="stat">20</div><div class="stat-l">E. coli na captação (NMP/100 mL), 14/05/2026<br/><span class="tag t-med">Medido</span></div></div>
+<div><div class="stat">3.448</div><div class="stat-l">E. coli no bebedouro I12 (NMP/100 mL), 14/05/2026<br/><span class="tag t-med">Medido</span></div></div>
+<div><div class="stat">≥24.196</div><div class="stat-l">Coliformes totais nos bebedouros A12 e I12 (teto do método)<br/><span class="tag t-med">Medido</span></div></div>
+<div><div class="stat">4 <small>de 4</small></div><div class="stat-l">pontos de 14/05/2026 com E. coli presente; a meta é ausência<br/><span class="tag t-med">Medido</span></div></div>
+</div>
+<div class="fig-h"><h3>Caminho da água na fazenda do piloto</h3></div>
+<p class="swipe">Deslize o diagrama para o lado →</p>
+<div class="fig">
+<svg aria-label="Caminho da água na fazenda do piloto, da captação aos bebedouros, com E. coli, coliformes totais e turbidez medidos em 14/05/2026" font-family="InterDoc,Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif" role="img" viewbox="0 0 1080 372" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="c-ar" markerheight="6" markerwidth="6" orient="auto" refx="8" refy="5" viewbox="0 0 10 10"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#8f98a2" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></marker>
+</defs>
+<g fill="none" stroke="#a7aeb6" stroke-linecap="round" stroke-width="1.6">
+<path d="M196,66 H228" marker-end="url(#c-ar)"></path>
+<path d="M412,66 H444" marker-end="url(#c-ar)"></path>
+<path d="M628,66 H660" marker-end="url(#c-ar)"></path>
+<path d="M844,66 H876" marker-end="url(#c-ar)"></path>
+</g>
+<g fill="none" stroke="#d5d9de" stroke-dasharray="3 4" stroke-width="1.2">
+<path d="M106,100 V150"></path><path d="M322,100 V150"></path><path d="M538,100 V150"></path><path d="M754,100 V150"></path><path d="M970,100 V150"></path>
+</g>
+<g stroke-width="1.25">
+<rect fill="#fff" height="68" rx="12" stroke="#c9ced4" width="180" x="16" y="32"></rect>
+<rect fill="#fff" height="68" rx="12" stroke="#c9ced4" width="180" x="232" y="32"></rect>
+<rect fill="#fff" height="68" rx="12" stroke="#c9ced4" width="180" x="448" y="32"></rect>
+<rect fill="#fff" height="68" rx="12" stroke="#c9ced4" width="180" x="664" y="32"></rect>
+<rect fill="#eaf4f5" height="68" rx="12" stroke="#0d6e7a" width="184" x="880" y="32"></rect>
+</g>
+<g fill="#9aa1a9" font-family="ui-monospace,SF Mono,Menlo,Consolas,monospace" font-size="10.5" letter-spacing=".04em">
+<text x="16" y="20">1</text><text x="232" y="20">2</text><text x="448" y="20">3</text><text x="664" y="20">4</text><text x="880" y="20">5</text>
+</g>
+<g text-anchor="middle">
+<text fill="#0f1215" font-size="14" font-weight="600" x="106" y="61">Captação superficial</text>
+<text fill="#6b737c" font-size="11.5" x="106" y="80">amostra "Captação Rio Juba"</text>
+<text fill="#0f1215" font-size="14" font-weight="600" x="322" y="61">Represa (açude)</text>
+<text fill="#6b737c" font-size="11.5" x="322" y="80">pré-sedimentação natural</text>
+<text fill="#0f1215" font-size="12.5" font-weight="600" x="538" y="61">Reservatório de membrana</text>
+<text fill="#6b737c" font-size="11.5" x="538" y="80">aberto, de lona, ~4 milhões L</text>
+<text fill="#0f1215" font-size="14" font-weight="600" x="754" y="61">Rede por gravidade</text>
+<text fill="#6b737c" font-size="11.5" x="754" y="80">2.694 m · 150 → 50 → 40 mm</text>
+<text fill="#0d6e7a" font-size="14" font-weight="600" x="972" y="61">Bebedouros</text>
+<text fill="#4d6f74" font-size="11.5" x="972" y="80">113 de concreto, com boia</text>
+</g>
+<!-- cartões de dados -->
+<g stroke-width="1">
+<rect fill="#fbfbfa" height="150" rx="10" stroke="#e1e4e8" width="180" x="16" y="150"></rect>
+<rect fill="#fbfbfa" height="150" rx="10" stroke="#e1e4e8" stroke-dasharray="4 3" width="180" x="232" y="150"></rect>
+<rect fill="#fbfbfa" height="150" rx="10" stroke="#e1e4e8" width="180" x="448" y="150"></rect>
+<rect fill="#fbfbfa" height="150" rx="10" stroke="#e1e4e8" stroke-dasharray="4 3" width="180" x="664" y="150"></rect>
+<rect fill="#fbfbfa" height="150" rx="10" stroke="#e1e4e8" width="184" x="880" y="150"></rect>
+</g>
+<g fill="#6b737c" font-size="10.5" font-weight="600" letter-spacing=".07em">
+<text x="30" y="172">MEDIDO EM 14/05/2026</text>
+<text x="246" y="172">REGISTRO DE CAMPO</text>
+<text x="462" y="172">MEDIDO EM 14/05/2026</text>
+<text x="678" y="172">REGISTRO DE CAMPO</text>
+<text x="894" y="172">MEDIDO EM 14/05/2026</text>
+</g>
+<g fill="#6b737c" font-size="12">
+<text x="30" y="200">E. coli</text><text x="30" y="226">Coliformes</text><text x="30" y="252">Turbidez</text>
+<text x="462" y="200">E. coli</text><text x="462" y="226">Coliformes</text><text x="462" y="252">Turbidez</text>
+<text x="894" y="216">E. coli</text><text x="894" y="242">Coliformes</text><text x="894" y="268">Turbidez</text>
+</g>
+<g font-size="13" font-weight="600" style="font-variant-numeric:tabular-nums" text-anchor="end">
+<text fill="#b4372f" x="182" y="200">20</text><text fill="#b4372f" x="182" y="226">609</text><text fill="#0f1215" x="182" y="252">3,66</text>
+<text fill="#b4372f" x="614" y="200">987</text><text fill="#b4372f" x="614" y="226">1.199</text><text fill="#0f1215" x="614" y="252">11,40</text>
+<text fill="#6b737c" font-size="10.5" font-weight="600" x="1000" y="194">A12</text><text fill="#6b737c" font-size="10.5" font-weight="600" x="1052" y="194">I12</text>
+<text fill="#b4372f" x="1000" y="216">908</text><text fill="#b4372f" x="1052" y="216">3.448</text>
+<text fill="#b4372f" text-anchor="middle" x="1026" y="242">≥24.196</text>
+<text fill="#0f1215" x="1000" y="268">18,00</text><text fill="#0f1215" x="1052" y="268">16,20</text>
+</g>
+<g fill="#9aa1a9" font-size="11">
+<text x="30" y="282">NMP/100 mL · NTU</text>
+<text x="462" y="282">NMP/100 mL · NTU</text>
+<text x="894" y="290">NMP/100 mL · NTU</text>
+</g>
+<g fill="#3a4148" font-size="12">
+<text x="246" y="198">Recebe o escoamento das</text>
+<text x="246" y="216">baias nos dias de chuva.</text>
+<text x="246" y="240">Após chuva forte, a água</text>
+<text x="246" y="258">chega barrenta aos</text>
+<text x="246" y="276">bebedouros.</text>
+<text x="678" y="198">Tratamento hoje:</text>
+<text fill="#0f1215" font-weight="600" x="678" y="216">nenhum.</text>
+<text x="678" y="240">Sem filtração, sem</text>
+<text x="678" y="258">cloração e sem correção</text>
+<text x="678" y="276">de pH.</text>
+</g>
+<g fill="#8a929b" font-size="11.5">
+<text x="16" y="338">Valores em vermelho: fora da meta (ausência de E. coli e de coliformes totais). Coliformes ≥ 24.196 nos dois bebedouros (teto do método).</text>
+<text x="16" y="358">A meta do PDF não traz valor numérico para turbidez (ver D18).</text>
+</g>
+</svg>
+</div>
+<p class="figcap">Caminho registrado no relatório da visita técnica (10/03/2026) e no status técnico (22/04/2026). Valores dos laudos de 14/05/2026, coleta sem chuva nas 24 h anteriores. O nome do manancial está em aberto <a class="dref" href="#d14">D14</a> <a class="dref" href="#d15">D15</a>.</p>
+<h3 class="sub" style="margin-top:56px">Meta × pontos de coleta</h3>
+<div class="tw">
+<table class="cmp">
+<thead><tr><th>Parâmetro (meta ideal)</th><th>Captação<br/>24/11/2025</th><th>Captação<br/>14/05/2026</th><th>Reservatório<br/>14/05/2026</th><th>Bebedouro A12<br/>14/05/2026</th><th>Bebedouro I12<br/>14/05/2026</th><th>Poço¹<br/>24/11/2025</th></tr></thead>
+<tbody>
+<tr><td>TDS / salinidade<br/><small class="v"><small>&lt; 1.000 ppm</small></small></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>condutividade 14,49 µS/cm</small></span></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>condutividade 6,15 µS/cm</small></span></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>condutividade 103,60 µS/cm</small></span></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>condutividade 136,80 µS/cm</small></span></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>condutividade 138,10 µS/cm</small></span></td>
+<td><span class="v">11,00 mg/L</span><span class="pill p-ok">dentro</span></td></tr>
+<tr><td>Sulfato<br/><small class="v"><small>&lt; 500 ppm</small></small></td>
+<td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td>
+<td><span class="v">&lt; 5,00 mg/L</span><span class="pill p-ok">dentro</span></td></tr>
+<tr><td>Nitrato NO₃-N<br/><small class="v"><small>&lt; 10 ppm</small></small></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>N total &lt; 1,00 mg/L</small></span></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>N total 1,13 mg/L</small></span></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>N total 1,16 mg/L</small></span></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>N total 1,15 mg/L</small></span></td>
+<td><span class="pill p-nm">n.m.</span><span class="v"><small>N total 1,11 mg/L</small></span></td>
+<td><span class="v">&lt; 0,32 mg/L <small>como N</small></span><span class="pill p-ok">dentro</span></td></tr>
+<tr><td>pH<br/><small class="v"><small>6,5 – 8,0</small></small></td>
+<td><span class="v">7,48</span><span class="pill p-ok">dentro</span></td>
+<td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td>
+<td><span class="v">7,10</span><span class="pill p-ok">dentro</span></td></tr>
+<tr><td>Metais tóxicos<br/><small class="v"><small>As &lt;0,2 · Pb &lt;0,1 · F &lt;2,0</small></small></td>
+<td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td><td><span class="pill p-nm">n.m.</span></td>
+<td><span class="v">F &lt; 0,07 mg/L</span><span class="pill p-ok">dentro</span><span class="v"><small>As e Pb n.m.</small></span></td></tr>
+<tr><td>E. coli<br/><small class="v"><small>ausência</small></small></td>
+<td><span class="v">198</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">20</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">987</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">908</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">3.448</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">Ausência</span><span class="pill p-ok">dentro</span></td></tr>
+<tr><td>Coliformes totais<br/><small class="v"><small>ausência</small></small></td>
+<td><span class="v">475</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">609</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">1.199</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">≥ 24.196²</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">≥ 24.196²</span><span class="pill p-bad">FORA</span></td>
+<td><span class="v">Presença</span><span class="pill p-bad">FORA</span></td></tr>
+<tr><td>Físico / manejo<br/><small class="v"><small>fresca, limpa, ad libitum</small></small></td>
+<td><span class="v">Turbidez 4,11 NTU</span><span class="v"><small>25,3 °C; chuva nas 24 h anteriores</small></span></td>
+<td><span class="v">Turbidez 3,66 NTU</span><span class="v"><small>sem chuva nas 24 h anteriores</small></span></td>
+<td><span class="v">Turbidez 11,40 NTU</span><span class="v"><small>reservatório aberto, alga superficial relatada em 22/04/2026</small></span></td>
+<td><span class="v">Turbidez 18,00 NTU</span></td>
+<td><span class="v">Turbidez 16,20 NTU</span></td>
+<td><span class="v">Turbidez &lt; 0,34 NTU</span><span class="v"><small>25,3 °C</small></span></td></tr>
+</tbody>
+</table>
+</div>
+<p class="figcap">“FORA” = fora da faixa ideal do PDF. “n.m.” = não medido nessa amostra. E. coli e coliformes em NMP/100 mL. ¹ O poço não é a fonte do confinamento. ² Limite superior de quantificação do método (SMEWW 9223 B): contagem igual ou maior. Todos os valores são de laudo <span class="tag t-med">Medido</span></p>
+<p class="src">Fontes: laudos Hidro Análise 7567 e 7568/2025 (coleta de 24/11/2025) e 3094 a 3097/2026 (coleta de 14/05/2026), consolidados na análise técnica da Wara Tech (jun/2026). Os laudos não vão anexos a este documento.</p>
+<h3 class="sub" style="margin-top:56px">Outros parâmetros medidos (sem alvo no PDF)</h3>
+<div class="tw">
+<table class="cmp">
+<thead><tr><th>Parâmetro</th><th>Captação<br/>24/11/2025</th><th>Captação<br/>14/05/2026</th><th>Reservatório<br/>14/05/2026</th><th>Bebedouro A12<br/>14/05/2026</th><th>Bebedouro I12<br/>14/05/2026</th><th>Poço<br/>24/11/2025</th></tr></thead>
+<tbody class="num">
+<tr><td>Alcalinidade total <small class="v"><small>mg CaCO₃/L</small></small></td><td>3,00</td><td>7,00</td><td>24,00</td><td>44,00</td><td>61,00</td><td>275,00</td></tr>
+<tr><td>Dureza total <small class="v"><small>mg/L</small></small></td><td>&lt; 5,00</td><td>6,00</td><td>36,00</td><td>46,00</td><td>40,00</td><td>242,00</td></tr>
+<tr><td>Condutividade <small class="v"><small>µS/cm</small></small></td><td>14,49</td><td>6,15</td><td>103,60</td><td>136,80</td><td>138,10</td><td>485,00</td></tr>
+<tr><td>Fósforo total <small class="v"><small>mg/L</small></small></td><td>&lt; 0,04</td><td>&lt; 0,04</td><td>&lt; 0,04</td><td>0,04</td><td>&lt; 0,04</td><td>n.m. <small>(ortofosfato &lt; 0,05)</small></td></tr>
+<tr><td>Ferro total <small class="v"><small>mg/L</small></small></td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>&lt; 0,05</td></tr>
+<tr><td>Manganês total <small class="v"><small>mg/L</small></small></td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>&lt; 0,09</td></tr>
+<tr><td>Cor aparente <small class="v"><small>UC</small></small></td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>5,00</td></tr>
+<tr><td>Cloreto / sódio <small class="v"><small>mg/L</small></small></td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>12,50 / 0,14</td></tr>
+<tr><td>Cálcio / magnésio <small class="v"><small>mg/L</small></small></td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>65,73 / 42,83</td></tr>
+<tr><td>Nitrito (N) / amoniacal <small class="v"><small>mg/L</small></small></td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>0,03 / &lt; 0,60</td></tr>
+<tr><td>Sílica solúvel <small class="v"><small>mg/L</small></small></td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>1,70</td></tr>
+<tr><td>Sólidos suspensos / totais <small class="v"><small>mg/L</small></small></td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>n.m.</td><td>&lt; 2,57 / 33,00</td></tr>
+</tbody>
+</table>
+</div>
+<h3 class="sub" style="margin-top:56px">O que ainda não foi medido</h3>
+<div class="tw stack">
+<table>
+<thead><tr><th>Parâmetro</th><th>Onde já foi medido</th><th>Onde falta</th></tr></thead>
+<tbody>
+<tr><td>TDS, sulfato, nitrato, F</td><td data-l="Onde já foi medido">Só no poço (24/11/2025)</td><td data-l="Onde falta">Captação, reservatório e bebedouros: só há condutividade e N total</td></tr>
+<tr><td>As e Pb</td><td data-l="Onde já foi medido">Em nenhum ponto</td><td data-l="Onde falta">Todos</td></tr>
+<tr><td>pH e temperatura</td><td data-l="Onde já foi medido">Captação e poço, só em 24/11/2025</td><td data-l="Onde falta">Reservatório e bebedouros; nenhuma medição em 14/05/2026</td></tr>
+<tr><td>Ferro e manganês</td><td data-l="Onde já foi medido">Só no poço</td><td data-l="Onde falta">Captação, reservatório e bebedouros <a class="dref" href="#d15">D15</a></td></tr>
+<tr><td>COT/cor, SDI, algas</td><td data-l="Onde já foi medido">Em nenhum ponto (cor aparente só no poço)</td><td data-l="Onde falta">Todos</td></tr>
+</tbody>
+</table>
+</div>
+<h3 class="sub" style="margin-top:56px">Rede da fazenda e ponto do piloto</h3>
+<dl class="spec">
+<div><dt>Captação</dt><dd>Superficial, com pré-filtro na bomba de captação, em condição regular, que retém sedimentos maiores.</dd></div>
+<div><dt>Tentativa anterior</dt><dd>Um produto de sedimentação foi aplicado no reservatório de membrana. O lodo exigiu limpeza complexa e a aplicação foi abandonada depois de uma ou duas vezes. No ano anterior, o reservatório foi limpo por causa de alga.</dd></div>
+<div><dt>Mudança planejada (2026)</dt><dd>Captação direto para o reservatório, sem passar pela represa, e um segundo reservatório de membrana (de 4 para 8 milhões de litros).</dd></div>
+<div><dt>Ponto do piloto</dt><dd>Baia de inovação: 4 bebedouros individuais com boia, em linha. Piso nivelado e coberto.</dd></div>
+<div><dt>Pressão na baia</dt><dd>Rede por gravidade; não atinge de forma consistente a faixa de 0,7 a 2 bar da máquina.</dd></div>
+<div><dt>Instalação</dt><dd>Dois cenários: máquina na baia, com booster; ou máquina ao lado do reservatório, com caixa tratada elevada (~10.000 L) e tubulação curta até os bebedouros. Pendente em 22/04/2026; nenhuma fonte posterior registra a escolha.</dd></div>
+<div><dt>Dados que faltam</dt><dd>Diâmetro e material da tubulação no ponto de instalação, pressão da rede na baia e vazão de outorga.</dd></div>
+</dl>
+<p class="src">Fontes: relatório da visita técnica (10/03/2026, versão de 11/03) e status técnico (22/04/2026).</p>
+<h3 class="sub" style="margin-top:56px">Fotos da fazenda (visita de 10/03/2026)</h3>
+<div class="photos">
+<figure><div class="ph"><img alt="Represa da fazenda" loading="lazy" src="assets/img/agua-represa.jpg"/></div><figcaption>Represa (açude): acumulação e pré-sedimentação natural.</figcaption></figure>
+<figure><div class="ph"><img alt="Reservatório de membrana" loading="lazy" src="assets/img/agua-reservatorio-1.jpg"/></div><figcaption>Reservatório de membrana, aberto e de lona.</figcaption></figure>
+<figure><div class="ph"><img alt="Reservatório de membrana, outra vista" loading="lazy" src="assets/img/agua-reservatorio-2.jpg"/></div><figcaption>Reservatório de membrana, outra vista.</figcaption></figure>
+<figure><div class="ph"><img alt="Bebedouro de concreto" loading="lazy" src="assets/img/agua-bebedouro-concreto.jpg"/></div><figcaption>Bebedouro de concreto do confinamento, um por baia.</figcaption></figure>
+<figure><div class="ph"><img alt="Bebedouro individual da baia de inovação" loading="lazy" src="assets/img/agua-bebedouro-individual.jpg"/></div><figcaption>Bebedouro individual com boia, na baia de inovação (ponto do piloto).</figcaption></figure>
+<figure><div class="ph"><img alt="Bebedouros em linha da baia de inovação" loading="lazy" src="assets/img/agua-bebedouros-baia.jpg"/></div><figcaption>Bebedouros individuais em linha, na baia de inovação.</figcaption></figure>
+</div>
+</div>
+</div>
+</section>
+<!-- 04 YARA HOJE -->
+<section id="yara">
+<div class="wrap sec">
+<div class="sec-head"><p class="eyebrow"><b>04</b>Yara hoje</p><h2>A Yara como existe hoje</h2><p class="q">Linhas, componentes e fluxo hidráulico da máquina de campo.</p></div>
+<div class="body">
+<p class="lead">A água sai de uma caixa d'água, passa por uma bomba e segue por duas linhas em paralelo. Cada linha tem pré-filtração e uma ultrafiltração (UF). As linhas se juntam e vão direto ao bebedouro, que tem boia, sem reservatório intermediário.</p>
+<p>O primeiro desenho é o P&amp;ID da máquina como montada: o fluxograma do painel de controle, só com a parte hidráulica. O segundo, desenhado por nós, mostra a mudança feita em campo em 03/10/2026, segundo o Google Doc de dúvidas e o vídeo da montagem. Os dois não mostram a mesma composição das linhas <a class="dref" href="#d1">D1</a>.</p>
+<div class="fig-h" style="margin-top:36px"><h3>P&amp;ID da máquina como montada</h3><span><a class="dref" href="#d1">D1</a> <a class="dref" href="#d22">D22</a> <a class="dref" href="#d23">D23</a></span></div>
+<p class="swipe">Deslize o desenho para o lado →</p>
+<div class="fig pid"><a href="assets/img/pid-yara-montada.png" rel="noopener" target="_blank" title="Abrir em tamanho original"><img alt="P&amp;ID da Yara como montada: fonte, filtro para bomba, Bomba 1, duas linhas com filtro de mídia e filtro UF, válvulas numeradas, retorno para a sucção, misturador, Bomba 2 com tanque de cloro e bebedouro" src="assets/img/pid-yara-montada.png"/></a></div>
+<p class="figcap pid-cap">P&amp;ID da máquina como montada. Fonte: fluxograma do painel de controle (figuras 11 e 12 do pacote; arquivo de 29/09/2026). Só o desenho hidráulico, em fundo claro, com os rótulos redigitados em letra maior (mesmo texto); os campos de leitura dos indicadores de pressão (PI) foram apagados. Clique para abrir em tamanho original. Os círculos verdes com números são as válvulas motorizadas, com a numeração transcrita da figura 11. Símbolos: M = válvula motorizada; válvula sem M = manual; PI = indicador de pressão. No desenho, a válvula 3 liga a saída do “Filtro para bomba” direto à saída da máquina, sem passar pela Bomba 1; a válvula 11 fica na linha que volta das UFs para a sucção da Bomba 1. Rótulos que divergem das outras fontes: <a class="dref" href="#d1">D1</a> <a class="dref" href="#d22">D22</a> <a class="dref" href="#d23">D23</a>.</p>
+<div class="fig-h" style="margin-top:44px"><h3>Montagem de 03/10/2026</h3><span><span class="tag t-rel">Relato</span> <a class="dref" href="#d1">D1</a></span></div>
+<p class="swipe">Deslize o diagrama para o lado →</p>
+<div class="fig">
+<svg aria-label="Fluxo hidráulico da Yara montado em 03/10/2026: linha 1 com filtro de disco e UF; linha 2 com filtro de mídia, válvula de 3 vias, filtro de disco e UF" font-family="InterDoc,Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif" role="img" viewbox="0 0 1080 446" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="b-ar" markerheight="6" markerwidth="6" orient="auto" refx="8" refy="5" viewbox="0 0 10 10"><path d="M1,1 L9,5 L1,9" fill="none" stroke="#8f98a2" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6"></path></marker>
+</defs>
+<g fill="none" stroke="#a7aeb6" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.6">
+<path d="M128,222 H154" marker-end="url(#b-ar)"></path>
+<path d="M274,222 H300 V112 H558" marker-end="url(#b-ar)"></path>
+<path d="M300,222 V332 H328" marker-end="url(#b-ar)"></path>
+<path d="M460,332 H492"></path>
+<path d="M526,332 H558" marker-end="url(#b-ar)"></path>
+<path d="M700,112 H738" marker-end="url(#b-ar)"></path>
+<path d="M700,332 H738" marker-end="url(#b-ar)"></path>
+<path d="M850,112 H884 V222"></path>
+<path d="M850,332 H884 V222"></path>
+<path d="M884,222 H918" marker-end="url(#b-ar)"></path>
+</g>
+<g fill="none" stroke="#c9ced4" stroke-dasharray="4 4" stroke-linecap="round" stroke-width="1.4">
+<path d="M509,350 V392"></path>
+</g>
+<g text-anchor="middle">
+<text fill="#8a929b" font-size="11.5" letter-spacing=".06em" x="509" y="410">ESGOTO</text>
+<text fill="#8a929b" font-size="11.5" x="509" y="427">desvio quando a água sai suja</text>
+</g>
+<g font-size="11" font-weight="600" letter-spacing=".08em">
+<text fill="#0d6e7a" x="316" y="96">LINHA 1 · DISCO + UF</text>
+<text fill="#0d6e7a" x="316" y="296">LINHA 2 · MÍDIA + 3 VIAS + DISCO + UF</text>
+</g>
+<g>
+<rect fill="#f1edf8" height="22" rx="6" width="66" x="618" y="281"></rect>
+<text fill="#6b4fa3" font-family="ui-monospace,SF Mono,Menlo,Consolas,monospace" font-size="11.5" font-weight="600" text-anchor="middle" x="651" y="296">ver D1</text>
+</g>
+<g stroke-width="1.25">
+<rect fill="#f6f7f8" height="52" rx="10" stroke="#d5d9de" width="112" x="16" y="196"></rect>
+<rect fill="#f6f7f8" height="52" rx="10" stroke="#d5d9de" width="118" x="156" y="196"></rect>
+<rect fill="#fff" height="48" rx="10" stroke="#c9ced4" width="140" x="560" y="88"></rect>
+<rect fill="#fff" height="48" rx="10" stroke="#c9ced4" width="110" x="740" y="88"></rect>
+<rect fill="#fff" height="48" rx="10" stroke="#c9ced4" width="130" x="330" y="308"></rect>
+<rect fill="#fff" height="48" rx="10" stroke="#c9ced4" width="140" x="560" y="308"></rect>
+<rect fill="#fff" height="48" rx="10" stroke="#c9ced4" width="110" x="740" y="308"></rect>
+<rect fill="#eaf4f5" height="52" rx="10" stroke="#0d6e7a" width="146" x="920" y="196"></rect>
+</g>
+<g fill="#fff" stroke="#0d6e7a" stroke-width="1.3">
+<path d="M509,315 L526,332 L509,349 L492,332 Z"></path>
+</g>
+<text fill="#0d6e7a" font-size="9.5" font-weight="700" text-anchor="middle" x="509" y="336">3V</text>
+<g text-anchor="middle">
+<text fill="#0f1215" font-size="14.5" font-weight="500" x="72" y="218">Caixa d'água</text>
+<text fill="#6b737c" font-size="11.5" x="72" y="236">~1.000 L no teste</text>
+<text fill="#0f1215" font-size="14.5" font-weight="500" x="215" y="218">Bomba</text>
+<text fill="#6b737c" font-size="11.5" x="215" y="236">Dancor AP3C · 1 CV</text>
+<text fill="#0f1215" font-size="14" font-weight="500" x="630" y="109">Filtro de disco</text>
+<text fill="#6b737c" font-size="11.5" x="630" y="126">120 mesh (~130 µm)</text>
+<text fill="#0f1215" font-size="14.5" font-weight="500" x="795" y="117">UF 1</text>
+<text fill="#0f1215" font-size="14" font-weight="500" x="395" y="329">Filtro de mídia</text>
+<text fill="#6b737c" font-size="11.5" x="395" y="346">areia + antracito</text>
+<text fill="#9a6a00" font-size="10.5" x="395" y="376">quebra-vácuo: não instalado,</text>
+<text fill="#9a6a00" font-size="10.5" x="395" y="390">segundo o Rodrigo (a confirmar)</text>
+<text fill="#0f1215" font-size="14" font-weight="500" x="630" y="329">Filtro de disco</text>
+<text fill="#6b737c" font-size="11.5" x="630" y="346">120 mesh (~130 µm)</text>
+<text fill="#0f1215" font-size="14.5" font-weight="500" x="795" y="337">UF 2</text>
+<text fill="#0d6e7a" font-size="14.5" font-weight="600" x="993" y="218">Bebedouro</text>
+<text fill="#4d6f74" font-size="11.5" x="993" y="236">com boia, sem tanque</text>
+</g>
+</svg>
+</div>
+<p class="figcap">Composição segundo o Google Doc de dúvidas e o vídeo da montagem de 03/10/2026. O filtro de disco é o mesmo modelo nas duas linhas. Na linha 2, a válvula de 3 vias manda para o esgoto a água que sai suja da mídia; com água limpa, segue para o disco. A numeração das válvulas não aparece porque as posições depois da mudança não foram registradas. O P&amp;ID acima mostra filtro de mídia nas duas linhas <a class="dref" href="#d1">D1</a>.</p>
+<h3 class="sub" style="margin-top:56px">Componentes</h3>
+<div class="tw stack">
+<table class="comp">
+<thead><tr><th>Componente</th><th>O que sabemos</th><th>Tipo do dado</th></tr></thead>
+<tbody>
+<tr><td>Água de entrada no teste</td><td data-l="O que sabemos">Caixa d'água de ~1.000 L no local do teste. Nas fazendas-alvo, a água bruta vem de reservatórios grandes, normalmente de geomembrana.</td><td data-l="Tipo do dado"><span class="tag t-rel">Relato</span></td></tr>
+<tr><td>Bomba</td><td data-l="O que sabemos">Dancor AP3C, ~1 CV. Vazão nominal registrada como “da ordem de 2.000–3.000 L/h” ou 3.000 L/h, conforme o trecho da fonte. Entrega medida com balde: ~1.500 a 1.700 L/h (erro &lt; 100 L/h).</td><td data-l="Tipo do dado"><span class="tag t-med">Medido</span> <a class="dref" href="#d2">D2</a></td></tr>
+<tr><td>Vaso de mídia</td><td data-l="O que sabemos">VITTAX 1465-4, PRFV 14" × 65", boca de 4". Etiqueta: 150 psi (1,0 MPa) máx., 1 a 49 °C, vácuo máx. 127 mmHg. Loja Era (NEA36): 147 L; 10 bar máx.; operação recomendada de 1 a 4 bar; vazão padrão 2,5 m³/h; retrolavagem recomendada 3 a 4 m³/h. Vaso “~60% cheio”.</td><td data-l="Tipo do dado"><span class="tag t-fab">Fabricante</span></td></tr>
+<tr><td>Mídia (por vaso)</td><td data-l="O que sabemos">De baixo para cima: areia grossa (25 kg), areia média (25 kg) e antracito (2 × 25 kg). Granulometria e altura das camadas não constam na nota fiscal.</td><td data-l="Tipo do dado"><span class="tag t-fab">Nota fiscal</span></td></tr>
+<tr><td>Válvula do vaso</td><td data-l="O que sabemos">Runxin F56A1, manual, multivias (serviço, retrolavagem, enxágue rápido), até 4 m³/h. Fabricante: tanques de 6" a 12", 1,5 a 6 bar, 5 a 50 °C, turbidez de entrada &lt; 20 FTU. Sem manual em mãos.</td><td data-l="Tipo do dado"><span class="tag t-fab">Fabricante</span> <a class="dref" href="#d12">D12</a></td></tr>
+<tr><td>Crepinas e tubo central</td><td data-l="O que sabemos">Crepina superior JD211 e inferior JD212, 3/4", ranhura 0,25 a 0,30 mm, para tanques de 6" a 12". Tubo central de 3/4" (25 mm), para tanques de 6" a 13". Se o tubo chega ao fundo do vaso: medição prevista a partir de 16/10/2026, na volta da máquina à PUC.</td><td data-l="Tipo do dado"><span class="tag t-fab">Fabricante</span></td></tr>
+<tr><td>Acessórios do vaso</td><td data-l="O que sabemos">Quebra-vácuo Small UM1 comprado, mas <b>não instalado, segundo o Rodrigo, a confirmar</b>. Redução N9903-A de 4" para 2,5" (boca do tanque para a base da válvula). A válvula de alívio saiu do pedido.</td><td data-l="Tipo do dado"><span class="tag t-fab">Nota fiscal</span> <span class="tag t-apx">A confirmar</span></td></tr>
+<tr><td>Filtro de disco (um por linha)</td><td data-l="O que sabemos">Irritec YDV “Modelo D” 3/4", 120 mesh (~130 µm), código IFYDVCDLM2C0N, discos vermelhos. Vazão máx. recomendada 5 m³/h; área filtrante 170 cm²; corpo e discos de polipropileno; vedação NBR. A família YDV vai até 200 mesh (~80 µm).</td><td data-l="Tipo do dado"><span class="tag t-fab">Fabricante</span> <a class="dref" href="#d13">D13</a></td></tr>
+<tr><td>UF (uma por linha)</td><td data-l="O que sabemos">Vazão nominal ~3.000 L/h. Modelo, fabricante, área e material da membrana desconhecidos; não há datasheet das membranas instaladas. Carcaça inox; cabeçote com O-ring, fechado por abraçadeira.</td><td data-l="Tipo do dado"><span class="tag t-nd">Desconhecido</span></td></tr>
+<tr><td>Válvulas da linha</td><td data-l="O que sabemos">12 válvulas de esfera motorizadas de 3/4", de 2 vias (posições no P&amp;ID; funções no mapa abaixo). O P&amp;ID mostra também válvulas manuais em série com as motorizadas. Válvula de 3 vias STK2012T DN20 3/4" a jusante da mídia, instalada em 02–03/10/2026.</td><td data-l="Tipo do dado"><span class="tag t-rel">Relato</span></td></tr>
+<tr><td>Proteção de pressão</td><td data-l="O que sabemos">Desarme acima de 5 bar observado em campo; o setpoint de corte usado no teste não está confirmado. Não há válvula de alívio mecânica.</td><td data-l="Tipo do dado"><span class="tag t-rel">Relato</span> <a class="dref" href="#d3">D3</a> <a class="dref" href="#d5">D5</a></td></tr>
+<tr><td>Retrolavagem</td><td data-l="O que sabemos">Em campo, feita à mão. A retrolavagem automática, pelo diferencial de pressão, não disparou: o limite é 8 bar, definido alto de propósito. A água filtrada de uma linha faz a retrolavagem da UF da outra; a válvula 8 cruza as linhas (pré-filtro 1 ↔ UF 2, pré-filtro 2 ↔ UF 1).</td><td data-l="Tipo do dado"><span class="tag t-rel">Relato</span> <a class="dref" href="#d6">D6</a></td></tr>
+<tr><td>Saída</td><td data-l="O que sabemos">Direto ao bebedouro, com boia mecânica de 3/4" de alta vazão, sem tanque. Quando a boia fecha, a pressão sobe e a máquina para. O religamento depois que a boia fecha não está definido.</td><td data-l="Tipo do dado"><span class="tag t-rel">Relato</span></td></tr>
+<tr><td>Cloro</td><td data-l="O que sabemos">Tanque PE de 60 L e dosadora de cloro instalados; a dosadora nunca foi testada em campo. Nota de engenharia de 04/10/2026: não dosar cloro de forma contínua no piloto, com a dosadora desligada para contingência; sem decisão final registrada.</td><td data-l="Tipo do dado"><span class="tag t-rel">Relato</span></td></tr>
+<tr><td>Manômetros</td><td data-l="O que sabemos">Genebre 63 mm (0 a 10 bar) e manômetro de 300 psi com glicerina, 1/4". O P&amp;ID tem 5 pontos de indicação de pressão (PI): descarga da Bomba 1, saída de cada filtro de mídia, linha de retorno da válvula 11 e saída das UFs.</td><td data-l="Tipo do dado"><span class="tag t-fab">Lista de peças</span> <span class="tag t-rel">P&amp;ID</span></td></tr>
+</tbody>
+</table>
+</div>
+<p class="src">Fontes: Google Doc “Yara: dúvidas de filtragem (v2)”; histórico de campo v2; notas fiscais da Era Ambiental (jul/2026, sem preços); identificação do filtro de disco (09/10/2026); fotos das etiquetas; cloro: nota de engenharia de 04/10/2026.</p>
+<h3 class="sub" style="margin-top:56px">Mapa das válvulas (estado de 29/09/2026)</h3>
+<div class="tw">
+<table class="valv">
+<thead><tr><th>Válvula</th><th>Função</th><th class="g">Grupo</th></tr></thead>
+<tbody>
+<tr><td class="n">0</td><td>Saída para o bebedouro</td><td class="g">Saída</td></tr>
+<tr><td class="n">5</td><td>Entrada da mídia 1</td><td class="g">Linha 1</td></tr>
+<tr><td class="n">13</td><td>Esgoto da mídia 1</td><td class="g">Linha 1</td></tr>
+<tr><td class="n">4</td><td>Esgoto da UF 1</td><td class="g">Linha 1</td></tr>
+<tr><td class="n">2</td><td>Saída da UF 1</td><td class="g">Linha 1</td></tr>
+<tr><td class="n">6</td><td>Entrada da mídia 2</td><td class="g">Linha 2</td></tr>
+<tr><td class="n">15</td><td>Esgoto da mídia 2</td><td class="g">Linha 2</td></tr>
+<tr><td class="n">7</td><td>Esgoto da UF 2</td><td class="g">Linha 2</td></tr>
+<tr><td class="n">9</td><td>Saída da UF 2</td><td class="g">Linha 2</td></tr>
+<tr><td class="n">8</td><td>Ligação entre as linhas depois das mídias</td><td class="g">Entre linhas</td></tr>
+<tr><td class="n">11</td><td>Volta do concentrado das UFs para a linha</td><td class="g">Entre linhas</td></tr>
+<tr><td class="n">3</td><td>Bypass (sem filtração)</td><td class="g">Bypass</td></tr>
+</tbody>
+</table>
+</div>
+<p class="src">Fonte: Rodrigo, 29/09/2026, antes das mudanças de 02–03/10 (3 vias e filtro de disco).</p>
+<h3 class="sub" style="margin-top:56px">Fotos da máquina</h3>
+<div class="photos">
+<figure><div class="ph"><img alt="Yara montada no galpão" loading="lazy" src="assets/img/yara-inteira.jpg"/></div><figcaption>Yara montada no galpão: dois vasos de mídia, válvulas motorizadas (laranja) e bomba embaixo.<span>O quadro elétrico foi desfocado: fora do escopo deste documento.</span></figcaption></figure>
+<figure><div class="ph"><img alt="Lateral da Yara com filtro de disco e vaso de mídia" loading="lazy" src="assets/img/video-skid-lateral.jpg"/></div><figcaption>Lateral da máquina: filtro de disco junto ao vaso de mídia e válvulas motorizadas.<span>Quadro do vídeo da montagem, 03/10/2026.</span></figcaption></figure>
+<figure><div class="ph"><img alt="Filtro de disco instalado" loading="lazy" src="assets/img/video-disco-instalado.jpg"/></div><figcaption>Filtro de disco Irritec instalado na linha.<span>Quadro do vídeo da montagem, 03/10/2026.</span></figcaption></figure>
+<figure><div class="ph"><img alt="Topo da carcaça de UF" loading="lazy" src="assets/img/video-cabecote-uf.jpg"/></div><figcaption>Topo de uma carcaça de UF: cabeçote inox fechado por abraçadeira, onde fica o O-ring.<span>Quadro do vídeo da montagem, 03/10/2026.</span></figcaption></figure>
+<figure><div class="ph"><img alt="Ligação de entrada" loading="lazy" src="assets/img/yara-entrada.jpg"/></div><figcaption>Ligação de entrada: mangueira preta, registro de esfera em PVC e tubulação junto ao vaso.</figcaption></figure>
+<figure><div class="ph"><img alt="Saída da bomba" loading="lazy" src="assets/img/yara-bomba.jpg"/></div><figcaption>Saída da bomba, no piso: uniões, tê com mangueira trançada e mangueira subindo para a tubulação.</figcaption></figure>
+<figure><div class="ph land contain"><img alt="Etiqueta do filtro de disco" loading="lazy" src="assets/img/disco-etiqueta.jpg"/></div><figcaption>Etiqueta do filtro de disco: Irritec IFYDVCDLM2C0N, “Y FILTER D 3/4" DISK 120M”.</figcaption></figure>
+<figure><div class="ph land contain"><img alt="Etiqueta do vaso: modelo 1465-4" loading="lazy" src="assets/img/vaso-etiqueta-modelo.jpg"/></div><figcaption>Etiqueta do vaso: VITTAX, pressure vessel, modelo 1465-4.</figcaption></figure>
+<figure><div class="ph land contain"><img alt="Etiqueta do vaso: especificações de operação" loading="lazy" src="assets/img/vaso-etiqueta-specs.jpg"/></div><figcaption>Etiqueta do vaso: 150 psi (1,0 MPa), 1 a 49 °C, vácuo máx. 127 mmHg.</figcaption></figure>
+</div>
+<div class="catalog">
+<p><b>Fotos de catálogo, não são as peças instaladas.</b> Não há foto real das crepinas nem da mídia. Estas imagens são da loja que vendeu os itens das notas fiscais (Era Ambiental), do mesmo modelo.</p>
+<div class="photos">
+<figure><div class="ph sq contain"><img alt="Válvula Runxin F56A1, catálogo" loading="lazy" src="assets/img/ref-f56a1.jpg"/></div><figcaption>Válvula manual Runxin F56A1</figcaption></figure>
+<figure><div class="ph sq contain"><img alt="Crepina superior JD211, catálogo" loading="lazy" src="assets/img/ref-jd211.jpg"/></div><figcaption>Crepina superior JD211, 3/4"</figcaption></figure>
+<figure><div class="ph sq contain"><img alt="Crepina inferior JD212, catálogo" loading="lazy" src="assets/img/ref-jd212.jpg"/></div><figcaption>Crepina inferior JD212, 3/4"</figcaption></figure>
+<figure><div class="ph sq contain"><img alt="Antracito, catálogo" loading="lazy" src="assets/img/ref-antracito.jpg"/></div><figcaption>Antracito<span>Página atual da loja: 0,8 a 1,0 mm. A nota fiscal não informa a granulometria.</span></figcaption></figure>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- 05 CAMPO -->
+<section id="campo">
+<div class="wrap sec">
+<div class="sec-head"><p class="eyebrow"><b>05</b>Campo</p><h2>O que aconteceu no campo</h2><p class="q">Linha do tempo da máquina de campo, com a visita de 02 a 04/10/2026 em destaque, e os problemas observados.</p></div>
+<div class="body">
+<div class="stats sm">
+<div><div class="stat">1.500–1.700</div><div class="stat-l">L/h entregues pela bomba, medida com balde, contra 3.000 L/h nominais<br/><span class="tag t-med">Medido</span> <a class="dref" href="#d2">D2</a></div></div>
+<div><div class="stat">&gt; 5 <small>bar</small></div><div class="stat-l">pressão em que a bomba desarmava, em menos de 2 s<br/><span class="tag t-rel">Relato</span> <a class="dref" href="#d3">D3</a> <a class="dref" href="#d4">D4</a></div></div>
+<div><div class="stat">~200 → ~1.000</div><div class="stat-l">L/h numa UF depois da lavagem manual e da retrolavagem improvisada, 03–04/10<br/><span class="tag t-apx">Aproximado</span></div></div>
+<div><div class="stat">2</div><div class="stat-l">entupimentos de UF: com antracito vindo da mídia e, depois, com só o disco a montante<br/><span class="tag t-rel">Relato</span></div></div>
+</div>
+<p class="phase">Antes da visita</p>
+<ol class="tl muted">
+<li><div class="d"><b>Jul</b>2026</div><div class="c"><h3>Montagem dos vasos de mídia</h3><dl>
+<dt>Feito</dt><dd>VITTAX 1465-4 (14" × 65"), válvula manual Runxin F56A1, crepinas JD211/JD212. Camadas, de baixo para cima: areia grossa, areia média, antracito.</dd>
+<dt>Observado</dt><dd>Vaso “~60% cheio”.</dd></dl></div></li>
+<li><div class="d"><b>13–27/09</b>2026</div><div class="c"><h3>Janela de campo: duas linhas iguais (mídia → UF)</h3><dl>
+<dt>Feito</dt><dd>Bomba ~1 CV, 12 válvulas motorizadas, alimentação por caixa d'água de ~1.000 L. Limpeza das UFs.</dd>
+<dt>Observado</dt><dd>UFs sujas limitando a vazão. Uma UF foi de ~400 para ~1.400–1.600 L/h com a limpeza; a outra chegou a ~1.200–1.300 L/h e caiu para menos de 300 L/h. A UF ficou “muito preta”. O pico ao ligar “quase estourou a vedação dos vasos de mídia”. Leitura de 7,46 bar na UF2. A sucção colapsava com mangueira fraca. A caixa d'água acabou e limitou os testes.</dd></dl></div></li>
+<li><div class="d"><b>28/09</b>2026</div><div class="c"><h3>Teste de pressão</h3><dl>
+<dt>Observado</dt><dd>2 bar estático; 1,8 bar pela mídia; 4 bar ao fechar válvulas, e a bomba desligou. Suspeita de mídia entupida.</dd>
+<dt>Decidido</dt><dd>Cada linha testaria uma alternativa: L1 mídia → 3 vias → UF1 e L2 disco → UF2. O que foi montado em 03/10 foi diferente <a class="dref" href="#d1">D1</a>. Limpar as UFs de 3.000 L/h. Entrega por boia mecânica, com parada pela pressão; religamento indefinido.</dd></dl></div></li>
+</ol>
+<p class="phase hot">Visita de campo · 02 a 04/10/2026</p>
+<ol class="tl hot">
+<li><div class="d"><b>02/10</b>sex</div><div class="c"><h3>Chegada</h3><dl>
+<dt>Observado</dt><dd>Mídia de uma linha “totalmente preta” e as duas UFs entupidas.</dd></dl></div></li>
+<li><div class="d"><b>03/10</b>sáb</div><div class="c"><h3>Mudança das linhas</h3><dl>
+<dt>Feito</dt><dd>Um vaso de mídia trocado por filtro de disco. Instaladas a válvula de 3 vias e a boia no bebedouro. Vídeo da montagem: L1 = disco → UF1; L2 = mídia → 3 vias → disco → UF2. Disco Irritec YDV 3/4" 120 mesh (~130 µm), um por linha.</dd>
+<dt>Decidido</dt><dd>Plano B com UFs de 1.000 L/h descartado (conexão de 1/2" contra linha de 3/4").</dd></dl></div></li>
+<li><div class="d"><b>03–04/10</b></div><div class="c"><h3>Lavagens</h3><dl>
+<dt>Feito</dt><dd>UF lavada à mão com água corrente e desentupida por retrolavagem improvisada (mangueira, pressão da caixa, água bruta): ~200 → ~1.000 L/h <a class="dref" href="#d8">D8</a>. Retrolavagens feitas à mão. Mídia lavada inúmeras vezes, inclusive ~20 min de retrolavagem.</dd>
+<dt>Observado</dt><dd>A mídia seguiu “sujando a água”. No balde, a água depois da mídia estava mais suja que a de entrada; depois do disco, sem melhora visível. Disco com pouca perda de carga. A caixa esvaziou e veio água do fundo com partículas grandes.</dd></dl></div></li>
+<li><div class="d"><b>04/10</b>dom</div><div class="c"><h3>Fim da visita</h3><dl>
+<dt>Feito</dt><dd>O-ring da cabeça da UF achado montado errado e remontado; o vazamento parou <a class="dref" href="#d9">D9</a>.</dd>
+<dt>Observado</dt><dd>Boia fechada (bebedouro cheio de chuva; o furo ficou pequeno) impediu testes. Ao ligar: 4–5 bar quase na hora e vazamento na cabeça da UF <a class="dref" href="#d4">D4</a>.</dd></dl></div></li>
+</ol>
+<p class="phase">Depois da visita</p>
+<ol class="tl muted">
+<li><div class="d"><b>05/10</b>seg</div><div class="c"><h3>Medição da bomba</h3><dl>
+<dt>Observado</dt><dd>Vazão aferida com balde (erro &lt; 100 L/h): ~1.500–1.700 L/h. Sem bomba, a caixa dava ~500–600 L/h. Causa não testada.</dd>
+<dt>Decidido</dt><dd>Caminho “de segurança”: disco + membrana, sem filtro de mídia; procurar discos em cascata. Trazer a máquina para a PUC. Válvula de alívio de 6 bar <a class="dref" href="#d5">D5</a>.</dd></dl></div></li>
+<li><div class="d"><b>06/10</b>ter</div><div class="c"><h3>Teste com o responsável local</h3><dl>
+<dt>Feito</dt><dd>Vazamento da UF: teflon; depois, abraçadeira desmontada e remontada com mais aperto, e o vazamento parou.</dd>
+<dt>Observado</dt><dd>Bomba desarmando por sobrepressão em &lt; 2 s; a pressão passava de 5 bar. Vazão zero com as duas linhas abertas: a válvula 0 (saída final) “fechava mas não abria”. Enchimento só pelo bypass. UF vazando de novo. Retrolavagem automática não acionou (limite de 8 bar, “alto de propósito”).</dd>
+<dt>Decidido</dt><dd>Operar só em bypass e retirar a máquina o quanto antes.</dd></dl></div></li>
+<li><div class="d"><b>07/10</b>qua</div><div class="c"><h3>Teste só com a coluna d'água (~2 bar)</h3><dl>
+<dt>Observado</dt><dd>Vazão “muito baixa”. A UF desentupida colmatou de novo, com só o disco a montante. UF em “bloqueio severo” <a class="dref" href="#d7">D7</a>. A linha com mídia, 3 vias e disco a jusante não resolveu.</dd>
+<dt>Decidido</dt><dd>2ª válvula em paralelo à válvula 0. Início do piloto passa para dezembro. Descartada a retrolavagem entre linhas com a mesma água, salvo com duas bombas ou fonte limpa <a class="dref" href="#d6">D6</a>. Pedidas fotos da crepina.</dd></dl></div></li>
+<li><div class="d"><b>08/10</b>qui</div><div class="c"><h3>Retirada</h3><dl>
+<dt>Decidido</dt><dd>Retirar a Yara sem novos testes; as mídias estragadas serão descartadas.</dd></dl></div></li>
+<li><div class="d"><b>09/10</b>sex</div><div class="c"><h3>Call com o Gabriel</h3><dl>
+<dt>Decidido</dt><dd>Pedir à Era Ambiental a documentação das membranas que ela tem disponíveis, só para conhecer as opções (não são as membranas instaladas na Yara). Sem teste de bancada.</dd></dl></div></li>
+<li><div class="d"><b>16/10</b>sex</div><div class="c"><h3>Volta da Yara à PUC (previsto)</h3><dl>
+<dt>Previsto</dt><dd>Medir se o tubo central do vaso chega ao fundo e conferir a composição das linhas.</dd></dl></div></li>
+</ol>
+<p class="src">Fonte: histórico de campo da Yara v2 (09/10/2026, reformatado em 12/10), que cita as calls de 28/09 a 09/10, o vídeo de 03/10 e o Google Doc de dúvidas; levantamento de problemas de 04/10/2026 (itens de 13–27/09).</p>
+<h3 class="sub" style="margin-top:48px">Problemas observados</h3>
+<div class="tw stack">
+<table class="prob">
+<thead><tr><th>#</th><th>Problema</th><th>O que se viu</th><th>Situação</th></tr></thead>
+<tbody>
+<tr><td>P1</td><td data-l="Problema">Mídia escureceu a água</td><td data-l="O que se viu">Água preta saindo do filtro de mídia, mais suja que a de entrada, mesmo depois de inúmeras lavagens e ~20 min de retrolavagem. O antracito chegou à UF. Os vasos foram transportados cheios, com mídia e água (4 h de carro).</td><td data-l="Situação">Causa não confirmada <a class="dref" href="#d10">D10</a> <a class="dref" href="#d11">D11</a></td></tr>
+<tr><td>P2</td><td data-l="Problema">UF colmatada</td><td data-l="O que se viu">Duas vezes: com antracito vindo da mídia e com só o disco a montante. Recuperou de ~200 para ~1.000 L/h e entupiu de novo.</td><td data-l="Situação">Sem datasheet da UF instalada; recuperação incerta <a class="dref" href="#d7">D7</a> <a class="dref" href="#d8">D8</a></td></tr>
+<tr><td>P3</td><td data-l="Problema">Disco sem efeito visível</td><td data-l="O que se viu">Pouca perda de carga; sem melhora visível de turbidez no balde.</td><td data-l="Situação">Sem curva do disco sujo</td></tr>
+<tr><td>P4</td><td data-l="Problema">Sobrepressão e desarme</td><td data-l="O que se viu">Desarme em &lt; 2 s acima de 5 bar; 4–5 bar quase na hora ao ligar; 7,46 bar na UF2 (set.); pico ao ligar que quase estourou a vedação dos vasos.</td><td data-l="Situação">Setpoint não confirmado <a class="dref" href="#d3">D3</a> <a class="dref" href="#d4">D4</a></td></tr>
+<tr><td>P5</td><td data-l="Problema">Vazamento no cabeçote da UF</td><td data-l="O que se viu">Vazou ao ligar. Parou ao remontar o O-ring, voltou, parou de novo com a abraçadeira remontada com mais aperto.</td><td data-l="Situação">Causa em aberto <a class="dref" href="#d9">D9</a></td></tr>
+<tr><td>P6</td><td data-l="Problema">Bomba abaixo do nominal</td><td data-l="O que se viu">~1.500–1.700 L/h medidos contra 3.000 L/h nominais.</td><td data-l="Situação">Gargalo não testado <a class="dref" href="#d2">D2</a></td></tr>
+<tr><td>P7</td><td data-l="Problema">Válvula de saída travada</td><td data-l="O que se viu">A válvula 0 “fechava mas não abria”: vazão zero com as duas linhas abertas.</td><td data-l="Situação">Decidida 2ª válvula em paralelo</td></tr>
+<tr><td>P8</td><td data-l="Problema">Boia fechada</td><td data-l="O que se viu">Bebedouro cheio de chuva; a máquina parava pela pressão. Religamento depois que a boia fecha não definido.</td><td data-l="Situação">Em aberto</td></tr>
+<tr><td>P9</td><td data-l="Problema">Caixa d'água esvaziou</td><td data-l="O que se viu">Veio água do fundo com partículas grandes; a falta de água limitou os testes.</td><td data-l="Situação">Captação em reservatório é pergunta da seção 07</td></tr>
+<tr><td>P10</td><td data-l="Problema">Retrolavagem automática não disparou</td><td data-l="O que se viu">Limite de diferencial de pressão em 8 bar, “alto de propósito”. Todas as retrolavagens foram manuais.</td><td data-l="Situação">Gatilho em aberto</td></tr>
+<tr><td>P11</td><td data-l="Problema">Sucção colapsava</td><td data-l="O que se viu">Com mangueira fraca, a sucção colapsava por vácuo.</td><td data-l="Situação">Trocada por mangueira com lona interna ou tubo rígido</td></tr>
+</tbody>
+</table>
+</div>
+<h3 class="sub" style="margin-top:48px">Fibras de UF com antracito</h3>
+<div class="photos">
+<figure><div class="ph"><img alt="Feixe de fibras de UF sujo" loading="lazy" src="assets/img/uf-fibras-1.jpg"/></div><figcaption>Feixe de fibras de UF escurecido.<span>Arquivo do pacote: 15-uf-suja-antracito.jpg. Data e linha não registradas.</span></figcaption></figure>
+<figure><div class="ph"><img alt="Feixe de fibras de UF sujo, detalhe" loading="lazy" src="assets/img/uf-fibras-2.jpg"/></div><figcaption>Feixe de fibras de UF escurecido.<span>Arquivo do pacote: 16-uf-suja-antracito.jpg. Data e linha não registradas.</span></figcaption></figure>
+<figure><div class="ph"><img alt="Feixe de fibras de UF sujo, outra vista" loading="lazy" src="assets/img/uf-fibras-3.jpg"/></div><figcaption>Feixe de fibras de UF escurecido.<span>Arquivo do pacote: 18-uf-suja-antracito.jpg. Data e linha não registradas.</span></figcaption></figure>
+</div>
+</div>
+</div>
+</section>
+<!-- 06 DIVERGÊNCIAS -->
+<section id="divergencias">
+<div class="wrap sec">
+<div class="sec-head"><p class="eyebrow"><b>06</b>Divergências</p><h2>Divergências em aberto</h2><p class="q">Onde as nossas fontes dizem coisas diferentes. Mostramos as versões lado a lado, sem escolher.</p></div>
+<div class="body">
+<h3 class="sub">Máquina e montagem</h3>
+<div class="tw stack"><table class="div">
+<thead><tr><th>#</th><th>Tema</th><th>Versão A</th><th>Versão B</th><th>Como confirmar</th></tr></thead>
+<tbody>
+<tr id="d1"><td>D1</td><td data-l="Tema">Composição das linhas</td><td data-l="Versão A">Google Doc de dúvidas e vídeo de 03/10: L1 = disco + UF; L2 = mídia (areia + antracito) + 3 vias + disco + UF.</td><td data-l="Versão B">P&amp;ID da máquina como montada: “Filtro mídia 1” e “Filtro mídia 2”, cada um seguido de “Filtro UF”; sem filtro de disco e sem válvula de 3 vias.</td><td data-l="Como confirmar">Conferência das linhas e foto do disco instalado na PUC, a partir de 16/10.</td></tr>
+<tr id="d9"><td>D9</td><td data-l="Tema">Causa do vazamento no cabeçote da UF</td><td data-l="Versão A">(a) O-ring montado errado (Manu, 07/10).</td><td data-l="Versão B">(b) Sobrepressão deslocou o O-ring (doc de dúvidas). (c) Vazamento por a UF estar entupida (Manu, 07/10). Não se sabe se resolveu o aperto maior ou só desmontar e montar.</td><td data-l="Como confirmar">Foto do cabeçote com o O-ring.</td></tr>
+<tr id="d22"><td>D22</td><td data-l="Tema">O que há na sucção</td><td data-l="Versão A">P&amp;ID: “Poço, açude ou rio” → “Filtro para bomba” → válvula manual → Bomba 1.</td><td data-l="Versão B">Panorama de peças e histórico: no teste, a fonte era uma caixa d'água de ~1.000 L; na sucção, mangueira com lona ou tubo rígido e válvula de pé/retenção; o panorama não registra filtro na sucção.</td><td data-l="Como confirmar">Conferência da sucção na PUC, a partir de 16/10.</td></tr>
+<tr id="d23"><td>D23</td><td data-l="Tema">Retorno do concentrado (válvula 11)</td><td data-l="Versão A">P&amp;ID: a linha da válvula 11 sai das UFs e volta para a sucção da Bomba 1.</td><td data-l="Versão B">Levantamento de problemas (04/10): o ponto exato de retorno da V11 não foi documentado.</td><td data-l="Como confirmar">Conferência da tubulação na PUC, a partir de 16/10.</td></tr>
+<tr id="d12"><td>D12</td><td data-l="Tema">Tanques compatíveis com a F56A1</td><td data-l="Versão A">Fabricante (Runxin): tanques de 6" a 12".</td><td data-l="Versão B">Loja Era: tanques de 6" a 14". O vaso instalado é de 14".</td><td data-l="Como confirmar">Manual da F56A1 (pedido à Era).</td></tr>
+<tr id="d13"><td>D13</td><td data-l="Tema">Dados do filtro de disco</td><td data-l="Versão A">Fabricante (Irritec): 120 mesh = 130 µm; 10 bar a 20 °C, sem pressão mínima.</td><td data-l="Versão B">Revendas brasileiras: 125 µm; mínimo 3 bar, máximo 8 bar. Uma revenda dá 8 bar como limite a 41–60 °C.</td><td data-l="Como confirmar">Ficha técnica oficial do modelo.</td></tr>
+</tbody>
+</table></div>
+<h3 class="sub" style="margin-top:48px">Pressão e bomba</h3>
+<div class="tw stack"><table class="div">
+<thead><tr><th>#</th><th>Tema</th><th>Versão A</th><th>Versão B</th><th>Como confirmar</th></tr></thead>
+<tbody>
+<tr id="d2"><td>D2</td><td data-l="Tema">Vazão nominal da bomba</td><td data-l="Versão A">Doc de dúvidas (contexto): “da ordem de 2.000–3.000 L/h”.</td><td data-l="Versão B">Doc de dúvidas (seção de pressão) e histórico: 3.000 L/h.</td><td data-l="Como confirmar">Etiqueta ou catálogo da bomba Dancor AP3C.</td></tr>
+<tr id="d3"><td>D3</td><td data-l="Tema">Corte por sobrepressão</td><td data-l="Versão A">Planejamento interno: corte fixo em 3 bar.</td><td data-l="Versão B">Campo: a máquina desarmou acima de 5 bar. O setpoint usado no teste não está confirmado.</td><td data-l="Como confirmar">Confirmar o valor antes do piloto.</td></tr>
+<tr id="d4"><td>D4</td><td data-l="Tema">Pressão no desarme</td><td data-l="Versão A">Calls de 05/10 e 06/10: 4–5 bar quase na hora ao ligar.</td><td data-l="Versão B">Doc de dúvidas: a pressão passava de 5 bar.</td><td data-l="Como confirmar">Medir com manômetro na volta à PUC, a partir de 16/10.</td></tr>
+<tr id="d5"><td>D5</td><td data-l="Tema">Válvula de alívio mecânica</td><td data-l="Versão A">Semanal de 05/10: válvula de alívio de 6 bar.</td><td data-l="Versão B">Planejamento: 4 ou 6 bar, “pendente decisão” (primeiro medir, depois comprar).</td><td data-l="Como confirmar">Registro da decisão.</td></tr>
+</tbody>
+</table></div>
+<h3 class="sub" style="margin-top:48px">Ultrafiltração e retrolavagem</h3>
+<div class="tw stack"><table class="div">
+<thead><tr><th>#</th><th>Tema</th><th>Versão A</th><th>Versão B</th><th>Como confirmar</th></tr></thead>
+<tbody>
+<tr id="d6"><td>D6</td><td data-l="Tema">Retrolavagem entre linhas</td><td data-l="Versão A">Doc de dúvidas: a água filtrada de uma linha faz a retrolavagem da UF da outra.</td><td data-l="Versão B">Call de 07/10: descartada a retrolavagem entre linhas com a mesma água, salvo com duas bombas ou fonte limpa.</td><td data-l="Como confirmar">Especificação da nova tubulação.</td></tr>
+<tr id="d7"><td>D7</td><td data-l="Tema">Perda de carga de ~2 m.c.a. na UF</td><td data-l="Versão A">Doc de dúvidas: ~2 m.c.a. foi a perda inicial, que aumentou até o bloqueio.</td><td data-l="Versão B">Plano do pacote (anterior): “ΔP de ~2 mca = bloqueada”.</td><td data-l="Como confirmar">Pressões medidas antes e depois da UF; identificação do modelo instalado.</td></tr>
+<tr id="d8"><td>D8</td><td data-l="Tema">Como as UFs foram regeneradas em 03–04/10</td><td data-l="Versão A">Levantamento de problemas (04/10): “regeneradas pelo protocolo”: flush/retrolavagem → água sanitária → enxágue → ácido cítrico → enxágue; resultado desconhecido.</td><td data-l="Versão B">Doc de dúvidas e histórico: lavagem manual com água corrente e retrolavagem improvisada, “sem química”. No vídeo de 03/10: “por enquanto eu não limpei as membranas não. Mas já comprei o cloro e um detergente aí, caso a gente precise.”</td><td data-l="Como confirmar">Confirmar com o Manu o que foi feito em campo.</td></tr>
+</tbody>
+</table></div>
+<h3 class="sub" style="margin-top:48px">Filtro de mídia</h3>
+<div class="tw stack"><table class="div">
+<thead><tr><th>#</th><th>Tema</th><th>Versão A</th><th>Versão B</th><th>Como confirmar</th></tr></thead>
+<tbody>
+<tr id="d10"><td>D10</td><td data-l="Tema">Causa da água preta (não confirmada)</td><td data-l="Versão A">Manu (05/10): montagem ou limpeza inicial, ou transporte dos vasos cheios (4 h de carro).</td><td data-l="Versão B">Gabriel (05/10 e 07/10): crepina mal dimensionada ou danificada, e carvão sem molho ou lavagem.</td><td data-l="Como confirmar">Fotos da crepina e medição do tubo central até o fundo do vaso, a partir de 16/10.</td></tr>
+<tr id="d11"><td>D11</td><td data-l="Tema">Autoria da suspeita de crepina “tipo cone com furos”</td><td data-l="Versão A">Histórico de campo (call de 07/10): levantada pelo Manu.</td><td data-l="Versão B">Plano do pacote (mesma call): suspeita do Gabriel.</td><td data-l="Como confirmar">Reouvir a call de 07/10.</td></tr>
+</tbody>
+</table></div>
+<h3 class="sub" style="margin-top:48px">Água bruta e meta</h3>
+<div class="tw stack"><table class="div">
+<thead><tr><th>#</th><th>Tema</th><th>Versão A</th><th>Versão B</th><th>Como confirmar</th></tr></thead>
+<tbody>
+<tr id="d14"><td>D14</td><td data-l="Tema">Nome do manancial da amostra de 24/11/2025</td><td data-l="Versão A">Nome do arquivo do laudo: “SEPOTUBA”.</td><td data-l="Versão B">Campo “Nº Amostra” do laudo e relatório da visita: “Captação Rio Juba”.</td><td data-l="Como confirmar">Em aberto. Segundo o Rodrigo, nem a equipe da fazenda chegou a uma conclusão. Confirmar com o laboratório o ponto de coleta.</td></tr>
+<tr id="d15"><td>D15</td><td data-l="Tema">Manancial e Fe/Mn alto</td><td data-l="Versão A">Briefing pré-visita e nota “ETA convencional” (09/03/2026): Ribeirão Três Pontes, ferro 3–10× e manganês 2–18× acima do normal; coliformes 95.000 UFC/100 mL. São dados de campo de outra fazenda.</td><td data-l="Versão B">Relatório da visita e laudos: Rio Juba. Fe e Mn nunca foram medidos na captação; só no poço (Fe &lt; 0,05; Mn &lt; 0,09 mg/L).</td><td data-l="Como confirmar">Análise de Fe e Mn na captação, no reservatório e no bebedouro.</td></tr>
+<tr id="d16"><td>D16</td><td data-l="Tema">Leitura da água na captação</td><td data-l="Versão A">Análise técnica, versão 1 (jun/2026), pela CONAMA 357: só o I12 é não conforme; a contaminação está no armazenamento e na distribuição, “não na fonte”. Protocolo v0.7 (23/07): a água “já é boa na fonte”.</td><td data-l="Versão B">Análise técnica, versão posterior (jun/2026), pela Portaria 888: todos os pontos reprovam, “inclusive a captação” (E. coli 20; coliformes 609).</td><td data-l="Como confirmar">Os dados são os mesmos; muda a régua. Decidir a régua do piloto.</td></tr>
+<tr id="d17"><td>D17</td><td data-l="Tema">Edição do NRC citada</td><td data-l="Versão A">PDF da água ideal: NRC (1974), Nutrients and Toxic Substances in Water for Livestock and Poultry; NASEM (2016).</td><td data-l="Versão B">Análise técnica: NRC (2000), Nutrient Requirements of Beef Cattle; ANZECC (2000). Nota “ETA convencional”: “NRC (2000): 9–23% de perdas no GMD”.</td><td data-l="Como confirmar">Conferir a edição citada em cada documento.</td></tr>
+<tr id="d18"><td>D18</td><td data-l="Tema">Meta de turbidez</td><td data-l="Versão A">PDF da água ideal: turbidez é “indicador” da Régua 2, sem valor-alvo.</td><td data-l="Versão B">Análise técnica: VMP de 5 NTU da Portaria 888 como objetivo do piloto.</td><td data-l="Como confirmar">Definir se 5 NTU entra como meta.</td></tr>
+<tr id="d19"><td>D19</td><td data-l="Tema">Faixas sem classe no PDF</td><td data-l="Versão A">Sulfato: aceitável 500–1.000; evitar &gt; 1.500. A faixa 1.000–1.500 não tem classe.</td><td data-l="Versão B">Nitrato: aceitável 10–20; evitar &gt; 40. A faixa 20–40 não tem classe.</td><td data-l="Como confirmar">Lacuna do próprio PDF. Não afeta Tangará: valores medidos muito abaixo.</td></tr>
+<tr id="d21"><td>D21</td><td data-l="Tema">Residual de cloro da Portaria 888</td><td data-l="Versão A">Nota “ETA convencional”: residual de 0,2–2 mg/L.</td><td data-l="Versão B">Nota sobre cloro: mínimo 0,2 e máximo 5 mg/L de cloro livre.</td><td data-l="Como confirmar">Conferir o artigo da Portaria.</td></tr>
+</tbody>
+</table></div>
+<h3 class="sub" style="margin-top:48px">Piloto</h3>
+<div class="tw stack"><table class="div">
+<thead><tr><th>#</th><th>Tema</th><th>Versão A</th><th>Versão B</th><th>Como confirmar</th></tr></thead>
+<tbody>
+<tr id="d20"><td>D20</td><td data-l="Tema">Tamanho do piloto</td><td data-l="Versão A">Rodrigo (12/10/2026): a princípio, 56 animais tratados e 56 de controle. Este esclarecimento substitui a versão anterior.</td><td data-l="Versão B">Protocolo de teste v0.7 (23/07/2026): 150 + 150 animais.</td><td data-l="Como confirmar">Confirmação pela fazenda do piloto.</td></tr>
+</tbody>
+</table></div>
+<p class="src">Fontes: tabela de divergências do histórico de campo v2; levantamento de problemas de 04/10/2026; análise meta × água de Tangará; notas sobre filtro de disco, cloro e ETA convencional; vídeo de 03/10/2026; P&amp;ID da máquina como montada.</p>
+</div>
+</div>
+</section>
+<!-- 07 PERGUNTAS -->
+<section id="perguntas">
+<div class="wrap sec">
+<div class="sec-head"><p class="eyebrow"><b>07</b>Perguntas</p><h2>O que pedimos ao Gabriel</h2><p class="q">35 perguntas, em sete grupos, cada uma com o dado que a motiva.</p></div>
+<div class="body">
+<p class="lead">A pergunta central é a última: que trem de tratamento você escolheria para deixar a água do piloto perfeita para o gado em ~4 a 8 semanas, com ou sem membrana, mesmo que manual por ora. As demais detalham cada etapa.</p>
+<div class="qgroup"><h3>Água bruta e captação</h3><ol class="qs">
+<li><span class="k">01</span><div><p class="qq">Nas fazendas em que vamos operar, a água vem sempre de um reservatório grande, normalmente de geomembrana. Como vocês fariam a captação nesse tipo de reservatório (profundidade, distância do fundo, captação flutuante, tela na sucção) para não puxar lodo, algas e material sedimentado?</p><p class="dd">No teste, a caixa d'água esvaziou e veio água do fundo com partículas grandes. O reservatório da fazenda do piloto é aberto e teve alga superficial em 22/04/2026.</p></div></li>
+<li><span class="k">02</span><div><p class="qq">Que análises de água vocês pediriam antes de recomendar o trem? Quais contaminantes da água bruta mais ameaçam a UF neste tipo de aplicação?</p><p class="dd">A análise de mai/2026 tem 8 parâmetros; pH e temperatura só de uma coleta anterior. Não há Fe, Mn, COT/cor, SDI nem algas na captação, no reservatório ou nos bebedouros.</p></div></li>
+</ol></div>
+<div class="qgroup"><h3>Pré-filtragem</h3><ol class="qs">
+<li><span class="k">03</span><div><p class="qq">Buscamos uma solução pareto: um trem de tratamento, com ou sem membrana, que garanta que vírus, bactérias e turbidez não cheguem à água que o boi bebe, sabendo que alguns locais vão exigir módulos adicionais. Dá para ter um sistema padrão? Se a rota tiver UF, qual é o trem mais seguro para garantir que ela não entupa, não rasgue e não perca a integridade dos poros?</p><p class="dd">Requisito de troca de elementos no máximo a cada 2 a 3 anos. A UF entupiu duas vezes em campo.</p></div></li>
+<li><span class="k">04</span><div><p class="qq">Para este perfil de água, que pré-tratamento vocês usariam (só filtro de disco, disco em cascata com malhas progressivamente mais finas, filtro de mídia ou outro), seja para proteger uma UF, seja dentro de outra rota?</p><p class="dd">O disco de ~130 µm teve pouca perda de carga, mas sem melhora visível na turbidez da água coletada na caixa d'água da fazenda. Não há curva de perda de carga do disco sujo.</p></div></li>
+<li><span class="k">05</span><div><p class="qq">Se disco em cascata: quais malhas (µm) e quantas etapas? Se a rota tiver UF, qual o risco de pular de ~130 µm para ela?</p><p class="dd">Hoje há uma só etapa de disco antes da UF. A família do disco instalado vai até 200 mesh (~80 µm).</p></div></li>
+<li><span class="k">06</span><div><p class="qq">Se a rota tiver UF, qual o gap máximo de poro entre a última etapa de pré-filtro e a UF?</p><p class="dd">Disco de ~130 µm direto na UF; o poro da UF instalada é desconhecido.</p></div></li>
+<li><span class="k">07</span><div><p class="qq">Uma solução de mercado usa microfiltração de 15 µm, 5 µm e depois UF. Faz sentido para água de bebedouro? Conseguimos essas membranas facilmente na China?</p><p class="dd">A reposição do disco foi pedida com malha “ideal até 5 µm”; filtro de disco não chega a isso.</p></div></li>
+<li><span class="k">08</span><div><p class="qq">As fontes divergem sobre o disco instalado: o grau é 130 µm (fabricante) ou 125 µm (algumas revendas)? A pressão máxima é 10 bar a 20 °C (fabricante) ou 3 a 8 bar (revendas brasileiras)? Que valores vocês usariam no projeto?</p><p class="dd">Etiqueta “Y FILTER D 3/4" DISK 120M”. Pela tabela do fabricante, 120 mesh = 130 µm. <a class="dref" href="#d13">D13</a></p></div></li>
+</ol></div>
+<div class="qgroup"><h3>Mídia, vaso e crepinas</h3><ol class="qs">
+<li><span class="k">09</span><div><p class="qq">O filtro de mídia que piorou a água: qual a hipótese principal (montagem, mídia errada, crepina, frete com mídia molhada, falta de lavagem de startup, outra)?</p><p class="dd">A água saiu preta do filtro de mídia. Foram inúmeras lavagens, inclusive ~20 min de retrolavagem, e ele continuou “sujando a água”. Não temos certeza se a limpeza inicial foi correta. Os dois filtros foram transportados cheios, com mídia e água (4 h de carro). O antracito chegou à UF. <a class="dref" href="#d10">D10</a></p></div></li>
+<li><span class="k">10</span><div><p class="qq">O vaso é 14" × 65", mas a válvula F56A1, as crepinas JD211/JD212 e o tubo central de 3/4" são especificados para tanques de até 12" ou 13". Isso pode explicar o antracito passando? Que conjunto de válvula, tubo e crepinas vocês usariam neste vaso?</p><p class="dd">O kit NEA36 da própria Era usa válvula F56F1 (6 m³/h) com tubo e crepinas de 1". As fontes divergem sobre a F56A1: o fabricante indica tanques de 6" a 12"; a loja Era anuncia 6" a 14". <a class="dref" href="#d12">D12</a></p></div></li>
+<li><span class="k">11</span><div><p class="qq">A bomba consegue retrolavar este vaso?</p><p class="dd">Retrolavagem recomendada para o NEA36: 3 a 4 m³/h. A bomba entrega ~1,5 a 1,7 m³/h.</p></div></li>
+<li><span class="k">12</span><div><p class="qq">Se o tubo central não chegar ao fundo do vaso, que efeito isso tem na filtração e na lavagem?</p><p class="dd">O vaso estava “~60% cheio”. A medição do tubo central está prevista a partir de 16/10, na volta da máquina à PUC.</p></div></li>
+<li><span class="k">13</span><div><p class="qq">Vale reaproveitar o vaso de mídia trocando mídias e crepina, ou o vaso deve sair?</p><p class="dd">As mídias estragadas serão descartadas. Em 05/10, o caminho “de segurança” considerado foi disco + membrana, sem filtro de mídia.</p></div></li>
+</ol></div>
+<div class="qgroup"><h3>Ultrafiltração (UF), se a rota mantiver membrana</h3><ol class="qs">
+<li><span class="k">14</span><div><p class="qq">Sem ficha técnica das membranas atuais (só sabemos a vazão nominal de ~3.000 L/h), como vocês avaliariam se elas servem, por exemplo com teste de vazão com água limpa ou teste de integridade? Ou recomendariam trocar por um modelo com ficha técnica conhecida?</p><p class="dd">Modelo, fornecedor e área de membrana desconhecidos; não há datasheet das membranas instaladas. Os datasheets pedidos à Era Ambiental em 09/10 são das membranas que ela tem disponíveis, só para conhecer as opções.</p></div></li>
+<li><span class="k">15</span><div><p class="qq">Para uma UF de ~3.000 L/h, ~2 m.c.a. de perda de carga indica membrana limpa ou já bloqueio?</p><p class="dd">Uma fonte registra ~2 m.c.a. como perda inicial, que depois evoluiu até bloqueio; outra registra ~2 m.c.a. como bloqueio. Hoje a UF tem obstrução severa, que impede a operação normal. <a class="dref" href="#d7">D7</a></p></div></li>
+<li><span class="k">16</span><div><p class="qq">Uma área de membrana bem maior resolveria o entupimento, combinada com recirculação do concentrado, retrolavagens programadas e talvez mais membranas em paralelo? Por que resolveria ou não? Que fluxo (L/m²·h) e que área vocês usariam para essa água?</p><p class="dd">1º entupimento com antracito vindo da mídia. 2º entupimento com só o disco de 130 µm a montante.</p></div></li>
+<li><span class="k">17</span><div><p class="qq">Dá para dimensionar a filtragem para entregar até 3.000 L/h direto no bebedouro, acionada pelo nível dele, ou um tanque-pulmão é necessário? Se der, o que isso exige de área de filtração (ou de membrana) e de bomba, considerando as muitas partidas e paradas? Se não der, por quê?</p><p class="dd">Consumo de ~2.000 a 3.000 L/dia, concentrado em ~2 h. Acionamento pela boia do bebedouro.</p></div></li>
+<li><span class="k">18</span><div><p class="qq">Que recuperação (% da água captada que vira água filtrada) é realista para essa água? O que fazer com o rejeito das retrolavagens e do concentrado na fazenda?</p><p class="dd">Meta de até 3.000 L/h; água bruta de reservatório de geomembrana.</p></div></li>
+<li><span class="k">19</span><div><p class="qq">Qual o gatilho ideal da retrolavagem (tempo de operação, diferencial de pressão na membrana, queda de vazão, turbidez), em que valores e com que frequência?</p><p class="dd">Em campo, a retrolavagem automática não disparou. As retrolavagens foram feitas à mão.</p></div></li>
+<li><span class="k">20</span><div><p class="qq">Que pressão e que vazão de retrolavagem vocês recomendam para a nossa UF?</p><p class="dd">Não temos ficha técnica da UF instalada.</p></div></li>
+<li><span class="k">21</span><div><p class="qq">Hoje a água filtrada de uma linha faz a retrolavagem da UF da outra. Esse arranjo atende, ou é melhor um pequeno tanque de água já filtrada só para retrolavagem? Com só duas linhas, a que fica filtrando consegue fornecer a vazão e a pressão de retrolavagem da outra, ou isso exige mais módulos em paralelo ou uma bomba de retrolavagem?</p><p class="dd">A válvula 8 cruza as linhas (pré-filtro 1 ↔ UF 2, pré-filtro 2 ↔ UF 1). Em 07/10, a retrolavagem entre linhas com a mesma água foi descartada, salvo com duas bombas ou fonte limpa. <a class="dref" href="#d6">D6</a></p></div></li>
+<li><span class="k">22</span><div><p class="qq">A retrolavagem dispara pela diferença de pressão na membrana, mas o limite está alto demais e, na prática, não dispara. Que limite vocês usariam? A retrolavagem deve ser feita com água já filtrada (permeado), ou água bruta pré-filtrada basta no curto prazo? Precisa de enxágue para o esgoto antes de voltar a filtrar?</p><p class="dd">O limite de diferencial de pressão é 8 bar, definido alto de propósito.</p></div></li>
+<li><span class="k">23</span><div><p class="qq">Uma retrolavagem improvisada com a pressão da caixa (~1.000 L) desentupiu uma UF. É aceitável como contingência ou é prática a evitar?</p><p class="dd">Lavagem manual com água corrente e retrolavagem só com a pressão da caixa e água bruta: vazão de ~200 para ~1.000 L/h. Depois, a UF entupiu de novo. <a class="dref" href="#d8">D8</a></p></div></li>
+<li><span class="k">24</span><div><p class="qq">Que limpezas químicas (CIP) usar se a perda de carga não voltar depois da retrolavagem? No nosso caso, que solução e procedimento vocês usariam, e como saber se a membrana ainda tem recuperação ou precisa ser trocada?</p><p class="dd">Não sabemos se a membrana ficou realmente desentupida ou se os poros continuaram colmatados. As fontes divergem sobre se houve limpeza química em 03–04/10. <a class="dref" href="#d8">D8</a></p></div></li>
+<li><span class="k">25</span><div><p class="qq">Vazamento no cabeçote da UF: qual a causa mais provável? As fontes divergem: O-ring montado errado; sobrepressão que tirou o O-ring do lugar; ou vazamento por a UF estar entupida. Também não sabemos se resolveu o aperto maior ou só desmontar e montar de novo.</p><p class="dd">Vazou ao ligar, com 4 a 5 bar quase na hora. O O-ring foi achado montado errado e remontado, e o vazamento parou. Voltou a vazar mesmo remontado corretamente. Parou depois de desmontar a abraçadeira e remontar com mais aperto. <a class="dref" href="#d9">D9</a></p></div></li>
+<li><span class="k">26</span><div><p class="qq">Podemos dosar cloro antes da UF? Em que dose e com que tipo de membrana? Numa rota sem membrana, ou com dosagem manual, como vocês usariam o cloro?</p><p class="dd">Temos dúvida se cloro antes da UF danifica a membrana. A dosadora está instalada e nunca foi testada em campo. A nota de 04/10 recomenda não dosar cloro de forma contínua no piloto; não há decisão final. <a class="dref" href="#d21">D21</a></p></div></li>
+</ol></div>
+<div class="qgroup"><h3>Válvulas e proteção</h3><ol class="qs">
+<li><span class="k">27</span><div><p class="qq">Na saída para o bebedouro, que arranjo de válvulas vocês usariam para que uma válvula travada não corte a água (redundância)? Vale ter uma válvula de alívio mecânica depois da bomba? Como organizar as camadas de proteção (corte da bomba, alívio mecânico) em relação ao limite dos elementos filtrantes?</p><p class="dd">A válvula de saída final travou fechada: “fechava mas não abria”. Com as duas linhas abertas, a vazão foi zero. Em 07/10, decidimos por uma 2ª válvula em paralelo à de saída.</p></div></li>
+<li><span class="k">28</span><div><p class="qq">Que pressões e medições de processo são essenciais para prever entupimento e perda de integridade (pressão antes e depois de cada etapa, vazão, turbidez da água filtrada, teste periódico de queda de pressão)? Em que valores vocês agiriam?</p><p class="dd">A UF chegou a bloqueio durante a operação em campo; se ~2 m.c.a. era perda inicial ou já bloqueio está em aberto. O P&amp;ID tem 5 pontos de indicação de pressão (PI): descarga da Bomba 1, saída de cada filtro de mídia, linha de retorno da válvula 11 e saída das UFs.</p></div></li>
+</ol></div>
+<div class="qgroup"><h3>Pressão e bomba</h3><ol class="qs">
+<li><span class="k">29</span><div><p class="qq">Que pressão máxima de corte vocês usariam para proteger a UF, o vaso e o disco? As fontes divergem: o planejamento interno indica corte em 3 bar; em campo, a máquina desarmou acima de 5 bar. O valor usado no teste não está confirmado.</p><p class="dd">A bomba ligava e chegava a empurrar água pela saída final, mas em menos de 2 s a pressão passava de 5 bar e ela desarmava. Em setembro, o pico ao ligar “quase estourou a vedação dos vasos de mídia” e houve leitura de 7,46 bar na UF2. A válvula de saída travada pode ter piorado o quadro, mas não explica tudo. <a class="dref" href="#d3">D3</a> <a class="dref" href="#d4">D4</a></p></div></li>
+<li><span class="k">30</span><div><p class="qq">Válvula de alívio mecânica: 4 ou 6 bar? As fontes divergem: em 05/10 falamos de uma válvula de 6 bar; o planejamento ainda registra 4 ou 6 bar como pendente.</p><p class="dd">Hoje não há alívio mecânico; a válvula de alívio saiu do pedido do vaso. Vaso: 10 bar máx., operação recomendada de 1 a 4 bar. <a class="dref" href="#d5">D5</a></p></div></li>
+<li><span class="k">31</span><div><p class="qq">Com bomba nominal de 3.000 L/h entregando ~1.500 a 1.700 L/h, o gargalo mais provável é sucção, bomba, pré-filtro ou UF?</p><p class="dd">Vazão aferida com balde (erro &lt; 100 L/h). Sem bomba, a caixa dava ~500 a 600 L/h. O doc original traz duas vazões nominais: “da ordem de 2.000–3.000 L/h” e 3.000 L/h. <a class="dref" href="#d2">D2</a></p></div></li>
+<li><span class="k">32</span><div><p class="qq">Como regular a pressão e a vazão da bomba em vez de só ligar e desligar? Vale bomba pressurizadora ou booster? Em que faixa de pressão a UF deve operar quando a entrada já chega pressurizada?</p><p class="dd">A pressão de entrada varia por local. Só com a coluna d'água (~2 bar), a vazão ficou “muito baixa”. Na baia do piloto, a rede por gravidade não atinge de forma consistente 0,7 a 2 bar.</p></div></li>
+</ol></div>
+<div class="qgroup"><h3>Operação em campo e trem final</h3><ol class="qs">
+<li><span class="k">33</span><div><p class="qq">O sistema vai operar ao ar livre, em região de clima quente. Que cuidados vocês tomariam com a temperatura da água e do ambiente e com o sol direto nas carcaças?</p><p class="dd">Água a 25,3 °C na coleta de nov/2025. Vaso: até 49 °C.</p></div></li>
+<li><span class="k">34</span><div><p class="qq">Algum cuidado com a filtragem em operação intermitente, com muitas partidas e paradas?</p><p class="dd">Acionamento pela boia do bebedouro. Consumo concentrado em ~2 h por dia.</p></div></li>
+<li><span class="k">35</span><div><p class="qq">Se tivesse que escolher um trem (com ou sem membrana, mesmo que manual por ora) para instalar em ~4 a 8 semanas, qual seria e o que você não faria?</p><p class="dd">Prazo de ~4 a 8 semanas; início do piloto em dezembro. Em 05/10, o caminho “de segurança” considerado foi disco + membrana, sem filtro de mídia.</p></div></li>
+</ol></div>
+</div>
+</div>
+</section>
+</main>
+<footer>
+<div class="wrap">
+<div class="cols">
+<div><h3>Fontes</h3><p>Todos os dados vêm destas fontes. Laudos, notas fiscais e registros internos não vão anexos.</p></div>
+<div class="tw stack">
+<table>
+<thead><tr><th>Fonte</th><th>Usada em</th></tr></thead>
+<tbody>
+<tr><td>PDF “A água ideal para o gado” (Wara Tech, jun/2026)</td><td data-l="Usada em">Seção 02: meta e réguas</td></tr>
+<tr><td>Laudos Hidro Análise: coletas de 24/11/2025 (captação e poço) e 14/05/2026 (captação, reservatório, bebedouros A12 e I12)</td><td data-l="Usada em">Seção 03</td></tr>
+<tr><td>Análise meta × água de Tangará; rede de água da fazenda do piloto (relatório da visita de 10/03/2026 e status de 22/04/2026)</td><td data-l="Usada em">Seções 03 e 06</td></tr>
+<tr><td>Google Doc “Yara: dúvidas de filtragem (v2)”, 12/10/2026</td><td data-l="Usada em">Seções 01, 04, 05 e 07</td></tr>
+<tr><td>Histórico de campo da Yara v2 e levantamento de problemas de 04/10/2026</td><td data-l="Usada em">Seções 05 e 06</td></tr>
+<tr><td>Mapa de função das válvulas (Rodrigo, 29/09/2026)</td><td data-l="Usada em">Seção 04</td></tr>
+<tr><td>Notas fiscais da Era Ambiental (jul/2026, só itens), etiquetas fotografadas e catálogos de fabricante</td><td data-l="Usada em">Seção 04</td></tr>
+<tr><td>Identificação do filtro de disco Irritec YDV; notas sobre cloro (04/10/2026) e ETA convencional</td><td data-l="Usada em">Seções 04 e 06</td></tr>
+<tr><td>Vídeo da montagem de 03/10/2026 (transcrição e quadros)</td><td data-l="Usada em">Seções 04 e 06</td></tr>
+<tr><td>Doc público da Yara de campo</td><td data-l="Usada em">Seção 04</td></tr>
+<tr><td>Fluxograma do painel de controle (P&amp;ID da máquina como montada, só o desenho hidráulico)</td><td data-l="Usada em">Seções 04 e 06</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+<p class="end">Wara Tech · Yara: hidráulica e processo de tratamento · 12/10/2026 · Documento de trabalho para consultoria técnica.</p>
+</div>
+</footer>
+<script>
+(function(){var l=[].slice.call(document.querySelectorAll('.top nav a'));var m={};l.forEach(function(a){m[a.getAttribute('href').slice(1)]=a});
+if(!('IntersectionObserver' in window))return;var o=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){l.forEach(function(a){a.classList.remove('on')});var a=m[e.target.id];if(a){a.classList.add('on');if(a.scrollIntoView&&window.innerWidth<680){a.parentNode.scrollLeft=a.offsetLeft-40}}}})},{rootMargin:'-45% 0px -50% 0px'});
+document.querySelectorAll('section[id]').forEach(function(s){o.observe(s)})})();
+</script>
+
+</body>
+</html>
